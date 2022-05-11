@@ -1,3 +1,4 @@
+import factory
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -5,7 +6,7 @@ from generic_repository.exceptions import ItemNotFoundException
 
 from .factories import AddTodoFactory, TodoItemModelFactory
 from .models import TodoItem
-from .repository import TodoRepository
+from .repository import TodoRepository, UpdateTodoPayload
 
 pytestmark = [
     pytest.mark.anyio(),
@@ -55,6 +56,12 @@ async def test_list_with_size(items: list[TodoItem], repository: TodoRepository)
     assert len(result) == 10
 
 
+async def test_list_with_offset(items: list[TodoItem], repository: TodoRepository):
+    result = await repository.get_list(offset=10)
+
+    assert len(result) == len(items) - 10
+
+
 async def test_get_nonexistent(repository: TodoRepository):
     with pytest.raises(ItemNotFoundException):
         await repository.get_by_id(100)
@@ -78,3 +85,17 @@ async def test_create(repository: TodoRepository):
     payload = AddTodoFactory()
     result = await repository.add(payload)
     assert result.id is not None
+
+
+async def test_update(repository: TodoRepository, item: TodoItem):
+    payload = factory.build(UpdateTodoPayload, title=factory.Faker("word"))
+    assert item.id
+    result = await repository.update(item.id, payload)
+    assert result.title == payload.title
+
+
+async def test_replace(repository: TodoRepository, item: TodoItem):
+    payload = AddTodoFactory.build()
+    assert item.id
+    result = await repository.replace(item.id, payload)
+    assert result.title == payload.title
