@@ -1,5 +1,5 @@
 import abc
-from typing import Any, ClassVar, Generic, Iterable, Type, TypeVar, Union, cast
+from typing import Any, ClassVar, Generic, Iterable, Type, TypeVar, cast
 
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.decl_api import DeclarativeMeta
 from sqlalchemy.sql.selectable import Select
 
-from .base import GenericBaseRepository, _Create, _Id, _Item, _Update
+from .base import GenericBaseRepository, _Create, _Id, _Item, _Replace, _Update
 from .exceptions import ItemNotFoundException
 from .mapper import Mapper
 
@@ -15,8 +15,8 @@ _Model = TypeVar("_Model")
 
 
 class DatabaseRepository(
-    Generic[_Model, _Create, _Update, _Item, _Id],
-    GenericBaseRepository[_Id, _Create, _Update, _Item],
+    Generic[_Model, _Create, _Update, _Replace, _Item, _Id],
+    GenericBaseRepository[_Id, _Create, _Update, _Replace, _Item],
     abc.ABC,
 ):
     """Base SQLAlchemy-based cruds.
@@ -37,13 +37,20 @@ class DatabaseRepository(
         session: AsyncSession,
         item_mapper: Mapper[_Model, _Item],
         create_mapper: Mapper[_Create, _Model],
-        update_mapper: Mapper[_Create | _Update, dict[str, Any]],
+        update_mapper: Mapper[_Update, dict[str, Any]],
+        replace_mapper: Mapper[_Replace, dict[str, Any]],
     ) -> None:
         """Initialize this crud instance.
 
         Args:
             session (AsyncSession): The SQLAlchemy async session to use.
-            mapper (Mapper[_Model, _Item]): The mapper implementation.
+            item_mapper (Mapper[_Model, _Item]): The mapper implementation to map
+                models to items.
+            create_mapper (Mapper[_Create, _Model]): Mapper to build item models.
+            update_mapper (Mapper[_Update, dict[str,Any]]): Mapper between update
+                payload and dict.
+            replace_mapper (Mapper[_Replace, dict[str,Any]]): Mapper to replace an
+                existing item.
         """
 
         assert session is not None
@@ -51,6 +58,7 @@ class DatabaseRepository(
         self.item_mapper = item_mapper
         self.create_mapper = create_mapper
         self.update_mapper = update_mapper
+        self.replace_mapper = replace_mapper
 
     @classmethod
     def get_db_model(cls) -> Type[_Model]:
@@ -179,26 +187,20 @@ class DatabaseRepository(
         async with self.session.begin_nested():
             await self.session.delete(model)
 
-    async def _update(
-        self, id: _Id, payload: _Create | _Update, *, partial: bool = False
-    ) -> _Item:
+    async def _update(self, id: _Id, payload: dict[str, Any]) -> _Item:
         model = await self._get_by_id(id)
 
         async with self.session.begin_nested():
-            self._patch_with(model, payload, partial=True)
+            self._patch_with(model, payload)
 
         return await self.session.run_sync(self.map_item, model)
 
-    def _patch_with(
-        self, model: _Model, payload: _Create | _Update, *, partial: bool = False
-    ):
-        for attr, value in self.update_mapper.map_item(
-            payload, exclude_unset=partial
-        ).items():
+    def _patch_with(self, model: _Model, payload: dict[str, Any]):
+        for attr, value in payload.items():
             setattr(model, attr, value)
 
     async def update(self, id: _Id, payload: _Update) -> _Item:
-        return await self._update(id, payload, partial=True)
+        return await self._update(id, self.update_mapper(payload, exclude_unset=True))
 
-    async def replace(self, id: _Id, payload: Union[_Create, _Update]):
-        return await self._update(id, payload, partial=False)
+    async def replace(self, id: _Id, payload: _Replace):
+        return await self._update(id, self.replace_mapper(payload))
