@@ -1,13 +1,14 @@
 import abc
-from typing import Any, Generic, TypeVar, Union
+from typing import Any, Generic, TypeVar
 
 _Create = TypeVar("_Create")
 _Update = TypeVar("_Update")
+_Replace = TypeVar("_Replace")
 _Item = TypeVar("_Item")
 _Id = TypeVar("_Id")
 
 
-class GenericBaseRepository(Generic[_Id, _Create, _Update, _Item], abc.ABC):
+class GenericBaseRepository(Generic[_Id, _Create, _Update, _Replace, _Item], abc.ABC):
     """Base class for all CRUD implementations."""
 
     @abc.abstractmethod
@@ -88,12 +89,12 @@ class GenericBaseRepository(Generic[_Id, _Create, _Update, _Item], abc.ABC):
         """
 
     @abc.abstractmethod
-    async def replace(self, id: _Id, payload: Union[_Create, _Update]) -> _Item:
+    async def replace(self, id: _Id, payload: _Replace) -> _Item:
         """Replace an item in the store.
 
         Args:
             id (_Id): The item ID to update.
-            payload (_Create): The new data to apply to the item.
+            payload (_Replace): The new data to apply to the item.
 
         Returns:
             _Item: The updated item.
