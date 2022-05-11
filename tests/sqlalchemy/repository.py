@@ -28,7 +28,9 @@ class Todo(AddTodoPayload):
 
 
 class TodoRepository(
-    DatabaseRepository[TodoItem, AddTodoPayload, UpdateTodoPayload, Todo, int]
+    DatabaseRepository[
+        TodoItem, AddTodoPayload, UpdateTodoPayload, AddTodoPayload, Todo, int
+    ]
 ):
     model_class = TodoItem
     primary_key_column = TodoItem.id
@@ -40,5 +42,6 @@ class TodoRepository(
             PydanticDictMapper(AddTodoPayload)
             .chain(ToFunctionArgsMapper)  # type: ignore
             .chain(ConstructorMapper, TodoItem),  # type: ignore
-            PydanticDictMapper(AddTodoPayload, UpdateTodoPayload),
+            PydanticDictMapper(UpdateTodoPayload),
+            PydanticDictMapper(AddTodoPayload),
         )
