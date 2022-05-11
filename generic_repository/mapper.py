@@ -38,7 +38,7 @@ class Mapper(Generic[_In, _Out], abc.ABC):
     """
 
     def __call__(self, input: _In, **kwds: Any) -> _Out:
-        return self.map_item(input)
+        return self.map_item(input, **kwds)
 
     @abc.abstractmethod
     def map_item(self, item: _In, **kwargs: Any) -> _Out:
@@ -96,7 +96,12 @@ class LambdaMapper(Mapper[_In, _Out]):
     12
     >>> mapper.reverse_map(15)
     5.0
-    >>>
+    >>> mapper2 = LambdaMapper(lambda x: x*3)
+
+    >>> mapper2.reverse_map(3)
+    Traceback (most recent call last):
+      ...
+    NotImplementedError: ...
     """
 
     def __init__(
@@ -131,19 +136,33 @@ class ToFunctionArgsMapper(Mapper[dict[str, Any] | Sequence, _Arguments]):
 
     >>> mapper({'x':3})
     _Arguments(args=(), kwargs={'x': 3})
+    >>> mapper([3])
+    _Arguments(args=(3,), kwargs={})
+    >>> mapper({3})
+    _Arguments(args=(3,), kwargs={})
+    >>> mapper((3,))
+    _Arguments(args=(3,), kwargs={})
+    >>> args, kwargs = mapper((3,), x=2)
+
+    >>> kwargs['x']
+    2
+    >>> mapper('x')
+    Traceback (most recent call last):
+      ...
+    TypeError: ...
     >>>
     """
 
     def map_item(self, item, **default_kwargs):
         args: list[Any] = []
         kwargs: dict[str, Any] = {}
+        kwargs.update(default_kwargs)
         if isinstance(item, dict):
             kwargs.update(item)
         elif isinstance(item, (tuple, list, set)):
             args.extend(item)
-
-        for attr, value in default_kwargs.items():
-            kwargs.setdefault(attr, value)
+        else:
+            raise TypeError("Type not supported.")
 
         return _Arguments(tuple(args), kwargs)
 
