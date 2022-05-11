@@ -1,5 +1,5 @@
 import abc
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, TypeVar, Union
 
 _Create = TypeVar("_Create")
 _Update = TypeVar("_Update")
@@ -88,7 +88,7 @@ class GenericBaseRepository(Generic[_Id, _Create, _Update, _Item], abc.ABC):
         """
 
     @abc.abstractmethod
-    async def replace(self, id: _Id, payload: _Create) -> _Item:
+    async def replace(self, id: _Id, payload: Union[_Create, _Update]) -> _Item:
         """Replace an item in the store.
 
         Args:

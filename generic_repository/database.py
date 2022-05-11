@@ -1,5 +1,5 @@
 import abc
-from typing import Any, ClassVar, Generic, Iterable, Type, TypeVar, cast
+from typing import Any, ClassVar, Generic, Iterable, Type, TypeVar, Union, cast
 
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -200,5 +200,5 @@ class DatabaseRepository(
     async def update(self, id: _Id, payload: _Update) -> _Item:
         return await self._update(id, payload, partial=True)
 
-    async def replace(self, id: _Id, payload: _Create) -> _Item:
+    async def replace(self, id: _Id, payload: Union[_Create, _Update]):
         return await self._update(id, payload, partial=False)
