@@ -118,7 +118,7 @@ class DatabaseRepository(
         """
         return select
 
-    async def _get_by_id(self, id: _Id) -> _Model:
+    async def get_unmapped_by_id(self, id: _Id) -> _Model:
         result = await self.session.scalar(
             self._get_query().where(self.get_id_field() == id)
         )
@@ -154,7 +154,9 @@ class DatabaseRepository(
         return [self.map_item(session, item) for item in items]
 
     async def get_by_id(self, id: _Id) -> _Item:
-        return await self.session.run_sync(self.map_item, await self._get_by_id(id))
+        return await self.session.run_sync(
+            self.map_item, await self.get_unmapped_by_id(id)
+        )
 
     async def get_count(self, **query_filters: Any) -> int:
         return await self.session.scalar(
@@ -177,18 +179,22 @@ class DatabaseRepository(
         assert isinstance(model, self.get_db_model())
 
         async with self.session.begin_nested():
+            await self.postprocess_model(model)
             self.session.add(model)
 
         return await self.session.run_sync(self.map_item, model)
 
+    async def postprocess_model(self, model: _Model):
+        pass
+
     async def remove(self, id: _Id):
-        model = await self._get_by_id(id)
+        model = await self.get_unmapped_by_id(id)
 
         async with self.session.begin_nested():
             await self.session.delete(model)
 
     async def _update(self, id: _Id, payload: dict[str, Any]) -> _Item:
-        model = await self._get_by_id(id)
+        model = await self.get_unmapped_by_id(id)
 
         async with self.session.begin_nested():
             self._patch_with(model, payload)
