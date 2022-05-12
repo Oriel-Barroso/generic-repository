@@ -2,8 +2,12 @@
 authors = ["Francisco Del Roio <francipvb@hotmail.com>"]
 description = "Generic repository patterm for python."
 name = "generic-repository"
+packages = [
+  {include = "generic_repository"},
+  {include = "generic_repository/py.typed"},
+]
 readme = "README.md"
-version = "1.0rc2"
+version = "1.0"
 
 [tool.poetry.dependencies]
 SQLAlchemy = {version = "^1.4.0", optional = true}
