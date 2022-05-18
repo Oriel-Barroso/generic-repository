@@ -5,12 +5,14 @@ from typing import (
     Dict,
     Generic,
     NamedTuple,
+    Optional,
     ParamSpec,
     Sequence,
     Type,
     TypeVar,
     Union,
 )
+
 
 _MapperParams = ParamSpec("_MapperParams")
 _In = TypeVar("_In")
@@ -64,8 +66,10 @@ class Mapper(Generic[_In, _Out], abc.ABC):
 
     def chain(
         self,
-        mapper_factory: Union[
-            Callable[_MapperParams, "Mapper[_Out, _New]"], Type["Mapper[_Out, _New]"]
+        mapper: Union[
+            Callable[_MapperParams, "Mapper[_Out, _New]"],
+            Type["Mapper[_Out, _New]"],
+            "Mapper[_Out, _New]",
         ],
         *mapper_args: _MapperParams.args,
         **mapper_kwargs: _MapperParams.kwargs
@@ -83,8 +87,11 @@ class Mapper(Generic[_In, _Out], abc.ABC):
         3.0
         >>>
         """
-        mapper = mapper_factory(*mapper_args, **mapper_kwargs)
-        return DecoratedMapper(self, mapper)
+        if isinstance(mapper, Mapper):
+            mapper_instance = mapper
+        elif callable(mapper):
+            mapper_instance = mapper(*mapper_args, **mapper_kwargs)  # type: ignore
+        return DecoratedMapper(self, mapper_instance)
 
 
 class LambdaMapper(Mapper[_In, _Out]):
@@ -105,7 +112,9 @@ class LambdaMapper(Mapper[_In, _Out]):
     """
 
     def __init__(
-        self, func: Callable[[_In], _Out], reverse_func: Callable[[_Out], _In] = None
+        self,
+        func: Callable[[_In], _Out],
+        reverse_func: Optional[Callable[[_Out], _In]] = None,
     ) -> None:
         super().__init__()
         self.func = func
