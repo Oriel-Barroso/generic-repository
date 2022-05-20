@@ -1,5 +1,5 @@
 import abc
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, Optional, TypeVar
 
 _Create = TypeVar("_Create")
 _Update = TypeVar("_Update")
@@ -33,10 +33,15 @@ class GenericBaseRepository(Generic[_Id, _Create, _Update, _Replace, _Item], abc
         Returns:
             int: _description_
         """
+        raise NotImplementedError()
 
     @abc.abstractmethod
     async def get_list(
-        self, *, offset: int = None, size: int = None, **query_filters: Any
+        self,
+        *,
+        offset: Optional[int] = None,
+        size: Optional[int] = None,
+        **query_filters: Any
     ) -> list[_Item]:
         """Retrieve a list of items.
 
