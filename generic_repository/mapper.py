@@ -39,6 +39,14 @@ class Mapper(Generic[_In, _Out], abc.ABC):
     """
 
     def __call__(self, input: _In, **kwds: Any) -> _Out:
+        """Process the input argument.
+
+        Args:
+            input: The object being processed.
+
+        Returns:
+            _Out: The resulting object.
+        """
         return self.map_item(input, **kwds)
 
     @abc.abstractmethod
@@ -117,6 +125,26 @@ class Mapper(Generic[_In, _Out], abc.ABC):
             )
 
         return DecoratedMapper(self, mapper_instance)
+
+    def __invert__(self) -> "Mapper[_Out, _In]":
+        """Return the inverse mapper.
+
+        Returns:
+            Mapper[_Out, _In]: A mapper doing the reverse operation.
+
+        For example, this inverts the lambda operation.
+        >>> mapper = ~LambdaMapper(lambda x: x*2, lambda x: x/2)
+        >>> mapper(4)
+        2.0
+        >>> reversed_mapper = ~mapper # (Reverse the mapper)
+        >>> reversed_mapper(4)
+        8
+        >>>
+        """
+        return InverseMapper(self)
+
+    def __rshift__(self, other: "Mapper[_New, _In]") -> "Mapper[_New, _Out]":
+        return DecoratedMapper(other, self)
 
 
 class LambdaMapper(Mapper[_In, _Out]):
@@ -285,3 +313,27 @@ class DecoratedMapper(Mapper[_In, _Out]):
 
     def reverse_map(self, out: _Out, **kwargs: Any) -> _In:
         return self.first.reverse_map(self.second.reverse_map(out, **kwargs), **kwargs)
+
+
+_Left = TypeVar("_Left")
+_Right = TypeVar("_Right")
+
+
+class InverseMapper(Mapper[_Out, _In], Generic[_In, _Out]):
+    """A reverse mapper.
+
+    This performs the inverse operation from the given mapper by calling the
+    `reverse_map` method.
+
+    Normally, this is not instantiated directly. Insthead, use the `inverse` operator.
+    """
+
+    def __init__(self, mapper: Mapper[_In, _Out]) -> None:
+        super().__init__()
+        self.mapper = mapper
+
+    def map_item(self, item: _Out, **kwargs: Any) -> _In:
+        return self.mapper.reverse_map(item, **kwargs)
+
+    def reverse_map(self, out: _In, **kwargs: Any) -> _Out:
+        return self.mapper.map_item(out, **kwargs)
