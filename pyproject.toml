@@ -27,6 +27,9 @@ mypy = "^0.950"
 pydantic = "^1.9.0"
 pytest = "^7.1.2"
 pytest-cov = "^3.0.0"
+fastapi = "^0.78.0"
+devtools = "^0.8.0"
+bandit = "^1.7.4"
 
 [tool.poetry.extras]
 http = ["httpx"]

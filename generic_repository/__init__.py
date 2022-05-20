@@ -10,6 +10,11 @@ except ImportError:  # pragma nocover
     pass
 
 try:
+    from .http import HttpRepository
+except ImportError:  # pragma nocover
+    pass
+
+try:
     from .pydantic import PydanticDictMapper, PydanticObjectMapper
 except ImportError:  # pragma nocover
     pass
