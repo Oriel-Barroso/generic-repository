@@ -1,5 +1,5 @@
 import abc
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, Optional, TypeVar
 
 _Create = TypeVar("_Create")
 _Update = TypeVar("_Update")
@@ -8,7 +8,10 @@ _Item = TypeVar("_Item")
 _Id = TypeVar("_Id")
 
 
-class GenericBaseRepository(Generic[_Id, _Create, _Update, _Replace, _Item], abc.ABC):
+class GenericBaseRepository(
+    Generic[_Id, _Create, _Update, _Replace, _Item],
+    abc.ABC,
+):  # pragma nocover
     """Base class for all CRUD implementations."""
 
     @abc.abstractmethod
@@ -24,6 +27,7 @@ class GenericBaseRepository(Generic[_Id, _Create, _Update, _Replace, _Item], abc
         Raises:
             ItemNotFoundError: If the item cannot be found.
         """
+        raise NotImplementedError()
 
     async def get_count(self, **query_filters: Any) -> int:
         """Retrieve a total count of items.
@@ -33,10 +37,15 @@ class GenericBaseRepository(Generic[_Id, _Create, _Update, _Replace, _Item], abc
         Returns:
             int: _description_
         """
+        raise NotImplementedError()
 
     @abc.abstractmethod
     async def get_list(
-        self, *, offset: int = None, size: int = None, **query_filters: Any
+        self,
+        *,
+        offset: Optional[int] = None,
+        size: Optional[int] = None,
+        **query_filters: Any
     ) -> list[_Item]:
         """Retrieve a list of items.
 
@@ -47,6 +56,7 @@ class GenericBaseRepository(Generic[_Id, _Create, _Update, _Replace, _Item], abc
         Returns:
             list[_Item]: A list containing the items found.
         """
+        raise NotImplementedError()
 
     @abc.abstractmethod
     async def add(self, payload: _Create) -> _Item:
@@ -61,6 +71,7 @@ class GenericBaseRepository(Generic[_Id, _Create, _Update, _Replace, _Item], abc
         Returns:
             _Item: The newly created item.
         """
+        raise NotImplementedError()
 
     @abc.abstractmethod
     async def remove(self, id: _Id):
@@ -72,6 +83,7 @@ class GenericBaseRepository(Generic[_Id, _Create, _Update, _Replace, _Item], abc
         Raises:
             ItemNotFoundException: If the item does not exist.
         """
+        raise NotImplementedError()
 
     @abc.abstractmethod
     async def update(self, id: _Id, payload: _Update) -> _Item:
@@ -87,6 +99,7 @@ class GenericBaseRepository(Generic[_Id, _Create, _Update, _Replace, _Item], abc
         Raises:
             ItemNotFoundError: If the item cannot be found.
         """
+        raise NotImplementedError()
 
     @abc.abstractmethod
     async def replace(self, id: _Id, payload: _Replace) -> _Item:
@@ -102,3 +115,4 @@ class GenericBaseRepository(Generic[_Id, _Create, _Update, _Replace, _Item], abc
         Raises:
             ItemNotFoundError: If the item cannot be found.
         """
+        raise NotImplementedError()
