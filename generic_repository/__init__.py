@@ -1,10 +1,15 @@
 # flake8: noqa F401
 
 from .base import GenericBaseRepository
-from .mapper import Mapper
+from .exceptions import CrudException, InvalidPayloadException, ItemNotFoundException
+from .mapper import ConstructorMapper, LambdaMapper, Mapper, ToFunctionArgsMapper
 
 try:
     from .database import DatabaseRepository
 except ImportError:  # pragma nocover
-    # maybe SQLAlchemy is not installed, we can safely ignore.
+    pass
+
+try:
+    from .pydantic import PydanticDictMapper, PydanticObjectMapper
+except ImportError:  # pragma nocover
     pass
