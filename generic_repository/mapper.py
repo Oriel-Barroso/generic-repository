@@ -13,7 +13,6 @@ from typing import (
     Union,
 )
 
-
 _MapperParams = ParamSpec("_MapperParams")
 _In = TypeVar("_In")
 _Out = TypeVar("_Out")
