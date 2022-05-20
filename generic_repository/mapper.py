@@ -79,17 +79,43 @@ class Mapper(Generic[_In, _Out], abc.ABC):
         ...     LambdaMapper(lambda x: x*2, lambda x: x/2)
         ...     .chain(LambdaMapper, lambda x: x*2, lambda x: x/2)
         ... )
-
         >>> mapper(3)
         12
         >>> mapper.reverse_map(12)
         3.0
+
+        >>> # You can also chain a mapper instance:
+        >>> mapper2=mapper.chain(LambdaMapper(lambda x: x*2, lambda x: x/2))
+        >>> mapper2(3)
+        24
+        >>> mapper2.reverse_map(24)
+        3.0
+        >>> # A mapper factory works too:
+        >>> def mapper_factory():
+        ...     return LambdaMapper(lambda x: x*3, lambda x: x/3)
+        ...
+        >>> mapper3 = mapper.chain(mapper_factory)
+        >>> mapper3(2)
+        24
+
+        Raises if you pass other than a factory, mapper instance or class:
+        >>> mapper.chain('x')
+        Traceback (most recent call last):
+          ...
+        TypeError: ...
         >>>
         """
-        if isinstance(mapper, Mapper):
-            mapper_instance = mapper
-        elif callable(mapper):
-            mapper_instance = mapper(*mapper_args, **mapper_kwargs)  # type: ignore
+        if callable(mapper):
+            if isinstance(mapper, Mapper):
+                mapper_instance = mapper
+            else:
+                mapper_instance = mapper(*mapper_args, **mapper_kwargs)  # type: ignore
+        else:
+            raise TypeError(
+                "Invalid value for the `mapper` parameter. Must be a mapper factory or"
+                "class."
+            )
+
         return DecoratedMapper(self, mapper_instance)
 
 
@@ -194,11 +220,18 @@ class ConstructorMapper(Mapper[_Arguments, _Obj], Generic[_Obj]):
     Point(x=4, y=5)
     >>> mapper(((),{'y': 5,'x':4}))
     Point(x=4, y=5)
+
+    Non-clas objects are not accepted:
+    >>> mapper2 = ConstructorMapper(lambda x, y: (x, y))
+    Traceback (most recent call last):
+      ...
+    AssertionError: ...
     """
 
     def __init__(self, cls: Type[_Obj]) -> None:
         super().__init__()
-        assert isinstance(cls, type)
+        if not isinstance(cls, type):
+            raise AssertionError("The provided object is not a valid class.")
         self.cls = cls
 
     def map_item(self, item: _Arguments, **kwargs: Any) -> _Obj:
@@ -210,10 +243,41 @@ _Intermediate = TypeVar("_Intermediate")
 
 
 class DecoratedMapper(Mapper[_In, _Out]):
+    """Wraps two other mappers, effectively producing a binaary tree of mappers.
+
+    Example:
+    >>> left = LambdaMapper(lambda x: x*2, lambda x: x/2)
+    >>> right = LambdaMapper(lambda x: x*3, lambda x: x/3)
+    >>> decorated = DecoratedMapper(left, right)
+    >>> decorated(2)
+    12
+    >>> decorated.reverse_map(12)
+    2.0
+
+    But non-mapper instances are not accepted:
+    >>> class FakeMapper:
+    ...     pass
+    ...
+    >>> decorated2=DecoratedMapper(left, FakeMapper())
+    Traceback (most recent call last):
+      ...
+    TypeError: ...
+    >>> decorated2=DecoratedMapper(FakeMapper(), right)
+    Traceback (most recent call last):
+      ...
+    TypeError: ...
+    >>>
+    """
+
     def __init__(
         self, first: Mapper[_In, _Intermediate], second: Mapper[_Intermediate, _Out]
     ) -> None:
         super().__init__()
+        if not isinstance(first, Mapper):
+            raise TypeError("The left mapper is not a valid mapper instance.")
+        if not isinstance(second, Mapper):
+            raise TypeError("The right-side mapper is not a valid mapper instance.")
+
         self.first, self.second = first, second
 
     def map_item(self, item: _In, **kwargs: Any) -> _Out:
