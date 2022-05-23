@@ -1,7 +1,8 @@
+import cgi
 import functools
-import http
 import math
 import typing
+from http import HTTPStatus
 
 import httpx
 
@@ -68,21 +69,45 @@ class HttpRepository(
         return params
 
     async def process_response(self, response: httpx.Response):
-        if not response.is_success:
-            if response.status_code == http.HTTPStatus.NOT_FOUND:
-                raise ItemNotFoundException("Http response 404.")
-            elif response.status_code in (
-                http.HTTPStatus.BAD_REQUEST,
-                http.HTTPStatus.UNPROCESSABLE_ENTITY,
-            ):
-                raise InvalidPayloadException(f"Status {response.status_code}.")
-            else:
-                response.raise_for_status()
+        self._ensure_success(response)
+
+        if response.status_code == HTTPStatus.NO_CONTENT:
+            return None
+        elif (
+            response.status_code >= 300 and response.status_code < 400
+        ):  # pragma nocover
+            raise RuntimeError("A redirect found.")
 
         try:
-            return response.json()
+            if self.is_json(response):
+                return response.json()
+            else:  # pragma nocover
+                # Return the response text representation:
+                return response.text
         finally:
             await response.aclose()
+
+    @classmethod
+    def _ensure_success(cls, response):
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError as ex:
+            if response.status_code == HTTPStatus.NOT_FOUND:
+                raise ItemNotFoundException("Cannot find the remote resource.") from ex
+            elif response.status_code in (
+                HTTPStatus.BAD_REQUEST,
+                HTTPStatus.UNPROCESSABLE_ENTITY,
+            ):
+                raise InvalidPayloadException() from ex
+            else:
+                raise
+
+    @classmethod
+    def is_json(cls, response: httpx.Response):
+        content_type, options = cgi.parse_header(response.headers.get("content-type"))
+        main_type, sub_type = content_type.split("/")
+        is_json = sub_type.startswith("json")
+        return is_json
 
     async def get_by_id(self, id):
         """Return a resource by it's ID.
@@ -299,7 +324,7 @@ class HttpRepository(
             await self.client.put(self.get_id_url(id), json=payload)
         )
 
-    async def remove(self, id):
+    async def remove(self, id: str):
         """Remove the specified remote resource.
 
         Args:

@@ -6,6 +6,7 @@ import pytest
 from generic_repository import HttpRepository, InvalidPayloadException
 
 from .factories import TodoItemDataFactory
+from .schemas import TodoItem
 
 pytestmark = [
     pytest.mark.anyio(),
@@ -17,6 +18,11 @@ async def some_items(repo: HttpRepository, anyio_backend):
     return [
         await repo.add(payload) for payload in TodoItemDataFactory.create_batch(100)
     ]
+
+
+@pytest.fixture()
+async def item(repo: HttpRepository, anyio_backend):
+    return TodoItem.parse_obj(await repo.add(TodoItemDataFactory.create()))
 
 
 async def test_list_empty(repo: HttpRepository):
@@ -45,3 +51,7 @@ async def test_send_invalid(repo: HttpRepository, bad_payload: Any):
 async def test_raises_httpx_exception(repo: HttpRepository):
     with pytest.raises(httpx.HTTPStatusError):
         await repo.get_list(status_code=500)
+
+
+async def test_remove(item: TodoItem, repo: HttpRepository):
+    await repo.remove(str(item.id))
