@@ -1,9 +1,11 @@
 import abc
+from dataclasses import dataclass, field
 from typing import (
     Any,
     Callable,
     Dict,
     Generic,
+    Mapping,
     NamedTuple,
     Optional,
     ParamSpec,
@@ -17,6 +19,8 @@ _MapperParams = ParamSpec("_MapperParams")
 _In = TypeVar("_In")
 _Out = TypeVar("_Out")
 _New = TypeVar("_New")
+_Left = TypeVar("_Left")
+_Right = TypeVar("_Right")
 
 
 class Mapper(Generic[_In, _Out], abc.ABC):
@@ -74,12 +78,11 @@ class Mapper(Generic[_In, _Out], abc.ABC):
     def chain(
         self,
         mapper: Union[
-            Callable[_MapperParams, "Mapper[_Out, _New]"],
+            Callable[[_Out], _New],
             Type["Mapper[_Out, _New]"],
-            "Mapper[_Out, _New]",
         ],
-        *mapper_args: _MapperParams.args,
-        **mapper_kwargs: _MapperParams.kwargs
+        *mapper_args: Any,
+        **mapper_kwargs: Any
     ) -> "Mapper[_In,_New]":
         """Chain another mapper to this.
 
@@ -92,21 +95,19 @@ class Mapper(Generic[_In, _Out], abc.ABC):
         >>> mapper.reverse_map(12)
         3.0
 
-        >>> # You can also chain a mapper instance:
+        You can also chain a mapper instance:
         >>> mapper2=mapper.chain(LambdaMapper(lambda x: x*2, lambda x: x/2))
         >>> mapper2(3)
         24
         >>> mapper2.reverse_map(24)
         3.0
-        >>> # A mapper factory works too:
-        >>> def mapper_factory():
-        ...     return LambdaMapper(lambda x: x*3, lambda x: x/3)
-        ...
-        >>> mapper3 = mapper.chain(mapper_factory)
-        >>> mapper3(2)
-        24
 
-        Raises if you pass other than a factory, mapper instance or class:
+        A plain callable gets wrapped in a lambda mapper:
+        >>> mapper3 = mapper2.chain(lambda x: x*2, reverse_func=lambda: x/2)
+        >>> mapper3(3)
+        48
+
+        Raises if any other type is provided.
         >>> mapper.chain('x')
         Traceback (most recent call last):
           ...
@@ -117,7 +118,20 @@ class Mapper(Generic[_In, _Out], abc.ABC):
             if isinstance(mapper, Mapper):
                 mapper_instance = mapper
             else:
-                mapper_instance = mapper(*mapper_args, **mapper_kwargs)  # type: ignore
+                if isinstance(mapper, type):
+                    mapper_instance = mapper(
+                        *mapper_args,
+                        **mapper_kwargs,
+                    )  # type: ignore
+                else:
+                    # Assume that this is a plain mapper function.
+                    reverse_func = mapper_kwargs.pop("reverse_func", None)
+                    mapper_instance = LambdaMapper(
+                        mapper,
+                        reverse_func,
+                        *mapper_args,
+                        **mapper_kwargs,
+                    )
         else:
             raise TypeError(
                 "Invalid value for the `mapper` parameter. Must be a mapper factory or"
@@ -143,42 +157,97 @@ class Mapper(Generic[_In, _Out], abc.ABC):
         """
         return InverseMapper(self)
 
-    def __rshift__(self, other: "Mapper[_New, _In]") -> "Mapper[_New, _Out]":
-        return DecoratedMapper(other, self)
+    def __rshift__(
+        self, other: "Mapper[_Left, _In]"
+    ) -> "Mapper[_Left, _Out]":  # pragma nocover
+        """Chain this mapper to the right of the other.
+
+        Args:
+            other (Mapper[_New, _In]): The mapper to chain to the left.
+
+        Returns:
+            Mapper[_New, _Out]: The mapper chain.
+        """
+        return other.chain(self)  # type: ignore
+
+    def __lshift__(
+        self, other: "Mapper[_Out, _Right]"
+    ) -> "Mapper[_In, _Right]":  # pragma nocover
+        """Chain this mapper to the left of the other.
+
+        Args:
+            other: The mapper to prepend.
+
+        Returns:
+            Mapper[_New, _Out]: The mapper chain.
+        """
+        return self.chain(other)  # type: ignore
+
+    @staticmethod
+    def identity():  # pragma nocover
+        return LambdaMapper(lambda x: x, lambda x: x)
 
 
+@dataclass(frozen=True)
 class LambdaMapper(Mapper[_In, _Out]):
     """A lambda-powered mapper.
 
+    A multiply mapper can be defined as follows:
     >>> mapper=LambdaMapper(lambda x: x*3, lambda x: x/3)
 
-    >>> mapper.map_item(4)
+    Example call:
+    >>> mapper(4)
     12
     >>> mapper.reverse_map(15)
     5.0
-    >>> mapper2 = LambdaMapper(lambda x: x*3)
 
+    If the `reverse_func` param is not provided, a `NotImplementedError` is raised.
+    >>> mapper2 = LambdaMapper(lambda x: x*3)
     >>> mapper2.reverse_map(3)
     Traceback (most recent call last):
       ...
     NotImplementedError: ...
+
+    A multiply x*n mapper can be defined as follows:
+    >>> mapper3 = LambdaMapper(
+    ...     lambda x, *, n: x*n,
+    ...     lambda x, *, n: x/n,
+    ... )
+    >>> mapper3(4, n=5)
+    20
+    >>> mapper3.reverse_map(20, n=5)
+    4.0
+    >>> mapper3(4)
+    Traceback (most recent call last):
+      ...
+    TypeError: ...
+
+    With a pre-populated `n` argument:
+    >>> mapper4 = LambdaMapper(
+    ...     mapper3.func, mapper3.reverse_func,
+    ...     mapper_kwargs={'n': 5}
+    ... )
+    >>> mapper4(4)
+    20
     """
 
-    def __init__(
-        self,
-        func: Callable[[_In], _Out],
-        reverse_func: Optional[Callable[[_Out], _In]] = None,
-    ) -> None:
-        super().__init__()
-        self.func = func
-        self.reverse_func = reverse_func
+    func: Callable[[_In], _Out]
+    reverse_func: Optional[Callable[[_Out], _In]] = None
+    mapper_kwargs: Mapping[str, Any] = field(default_factory=dict)
 
     def map_item(self, item: _In, **kwargs: Any) -> _Out:
-        return self.func(item)
+        return self.func(item, **self._merge_kwargs(kwargs))
+
+    def _merge_kwargs(self, kwargs: Mapping[str, Any]) -> Mapping[str, Any]:
+        extra_kwargs = {**self.mapper_kwargs}
+
+        extra_kwargs.update(kwargs)
+
+        return extra_kwargs
 
     def reverse_map(self, out: _Out, **kwargs: Any) -> _In:
         if self.reverse_func is not None:
-            return self.reverse_func(out)
+            return self.reverse_func(out, **self._merge_kwargs(kwargs))
         return super().reverse_map(out)
 
 
@@ -313,10 +382,6 @@ class DecoratedMapper(Mapper[_In, _Out]):
 
     def reverse_map(self, out: _Out, **kwargs: Any) -> _In:
         return self.first.reverse_map(self.second.reverse_map(out, **kwargs), **kwargs)
-
-
-_Left = TypeVar("_Left")
-_Right = TypeVar("_Right")
 
 
 class InverseMapper(Mapper[_Out, _In], Generic[_In, _Out]):

@@ -1,20 +1,26 @@
 import asyncio
 import functools
-import typing
+from typing import (
+    Any,
+    Callable,
+    Coroutine,
+    Generator,
+    Generic,
+    Optional,
+    ParamSpec,
+    TypeVar,
+    Union,
+)
 
 from .base import GenericBaseRepository, _Create, _Id, _Item, _Replace, _Update
 
-_Params = typing.ParamSpec("_Params")
-_FuncOut = typing.TypeVar("_FuncOut")
+_Params = ParamSpec("_Params")
+_FuncOut = TypeVar("_FuncOut")
 
 
 def _task(
-    func: typing.Callable[
-        _Params,
-        typing.Union[
-            typing.Generator[typing.Any, None, _FuncOut],
-            typing.Coroutine[typing.Any, typing.Any, _FuncOut],
-        ],
+    func: Callable[
+        _Params, Union[Generator[Any, None, _FuncOut], Coroutine[Any, Any, _FuncOut]]
     ]
 ):
     @functools.wraps(func)
@@ -28,7 +34,7 @@ def _task(
 
 class CacheRepository(
     GenericBaseRepository[_Id, _Create, _Update, _Replace, _Item],
-    typing.Generic[_Id, _Create, _Update, _Replace, _Item],
+    Generic[_Id, _Create, _Update, _Replace, _Item],
 ):
     """A cached repository implementation.
 
@@ -55,15 +61,15 @@ class CacheRepository(
     async def get_list(
         self,
         *,
-        offset: typing.Optional[int] = None,
-        size: typing.Optional[int] = None,
-        **query_filters: typing.Any
+        offset: Optional[int] = None,
+        size: Optional[int] = None,
+        **query_filters: Any
     ) -> list[_Item]:
         return await self.repository.get_list(offset=offset, size=size, **query_filters)
 
     @functools.cache
     @_task
-    async def get_count(self, **query_filters: typing.Any) -> int:
+    async def get_count(self, **query_filters: Any) -> int:
         return await self.repository.get_count()
 
     @functools.cache
@@ -71,18 +77,17 @@ class CacheRepository(
     async def get_by_id(self, id: _Id) -> _Item:
         return await self.repository.get_by_id(id)
 
-    async def update(self, id: _Id, payload: _Update) -> _Item:
-        result = await self.repository.update(id, payload)
+    async def update(self, id: _Id, payload: _Update, **kwargs: Any) -> _Item:
+        result = await self.repository.update(id, payload, **kwargs)
+        self.clear_cache()
+        return result
+
+    async def replace(self, id: _Id, payload: _Replace, **kwargs: Any) -> _Item:
+        result = await self.repository.replace(id, payload, **kwargs)
         self.clear_cache()
         await self.get_by_id(id)
         return result
 
-    async def replace(self, id: _Id, payload: _Replace) -> _Item:
-        result = await self.repository.replace(id, payload)
-        self.clear_cache()
-        await self.get_by_id(id)
-        return result
-
-    async def remove(self, id: _Id):
-        await self.repository.remove(id)
+    async def remove(self, id: _Id, **kwargs: Any):
+        await self.repository.remove(id, **kwargs)
         self.clear_cache()

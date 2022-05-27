@@ -7,11 +7,11 @@ packages = [
   {include = "generic_repository/py.typed"},
 ]
 readme = "README.md"
-version = "1.1.1"
+version = "1.2a1"
 
 [tool.poetry.dependencies]
 SQLAlchemy = {version = "^1.4.0", optional = true}
-httpx = {version = "^0.22.0", optional = true}
+httpx = {version = "^0.23.0", optional = true}
 pydantic = {version = "^1.9.0", optional = true}
 python = "^3.10"
 
@@ -30,6 +30,7 @@ mypy = "^0.950"
 pydantic = "^1.9.0"
 pytest = "^7.1.2"
 pytest-cov = "^3.0.0"
+httpx = "^0.23.0"
 
 [tool.poetry.extras]
 http = ["httpx"]
