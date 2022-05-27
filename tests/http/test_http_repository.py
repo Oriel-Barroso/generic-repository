@@ -50,7 +50,7 @@ async def test_send_invalid(repo: HttpRepository, bad_payload: Any):
 
 async def test_raises_httpx_exception(repo: HttpRepository):
     with pytest.raises(httpx.HTTPStatusError):
-        await repo.get_list(status_code=500)
+        await repo.get_list(params=dict(status_code=500))
 
 
 async def test_remove(item: TodoItem, repo: HttpRepository):
