@@ -15,11 +15,11 @@ class GenericBaseRepository(
     """Base class for all CRUD implementations."""
 
     @abc.abstractmethod
-    async def get_by_id(self, id: _Id) -> _Item:
+    async def get_by_id(self, id: _Id, **kwargs: Any) -> _Item:
         """Retrieve an item by it's ID.
 
         Args:
-            id (_Id): The item ID to retrieve.
+            id: The item ID to retrieve.
 
         Returns:
             _Item: The item.
@@ -31,8 +31,6 @@ class GenericBaseRepository(
 
     async def get_count(self, **query_filters: Any) -> int:
         """Retrieve a total count of items.
-
-        You can also specify query filters.
 
         Returns:
             int: _description_
@@ -50,8 +48,8 @@ class GenericBaseRepository(
         """Retrieve a list of items.
 
         Args:
-            offset (int, optional): Where to start retrieving items.. Defaults to None.
-            size (int, optional): How many items to retrieve.. Defaults to None.
+            offset: Where to start retrieving items.. Defaults to None.
+            size: How many items to retrieve.. Defaults to None.
 
         Returns:
             list[_Item]: A list containing the items found.
@@ -59,11 +57,11 @@ class GenericBaseRepository(
         raise NotImplementedError()
 
     @abc.abstractmethod
-    async def add(self, payload: _Create) -> _Item:
+    async def add(self, payload: _Create, **kwargs: Any) -> _Item:
         """Add a new item.
 
         Args:
-            payload (_Create): The data to use when adding the new item.
+            payload: The data to use when adding the new item.
 
         Raises:
             InvalidPayloadException: If the payload is not valid.
@@ -74,11 +72,11 @@ class GenericBaseRepository(
         raise NotImplementedError()
 
     @abc.abstractmethod
-    async def remove(self, id: _Id):
+    async def remove(self, id: _Id, **kwargs: Any):
         """Remove the item identified by the supplied ID.
 
         Args:
-            id (_Id): The item ID to remove.
+            id: The item ID to remove.
 
         Raises:
             ItemNotFoundException: If the item does not exist.
@@ -86,12 +84,12 @@ class GenericBaseRepository(
         raise NotImplementedError()
 
     @abc.abstractmethod
-    async def update(self, id: _Id, payload: _Update) -> _Item:
+    async def update(self, id: _Id, payload: _Update, **kwargs: Any) -> _Item:
         """Update an item.
 
         Args:
-            id (_Id): The item ID to update.
-            payload (_Update): The new data to apply to the item.
+            id: The item ID to update.
+            payload: The new data to apply to the item.
 
         Returns:
             _Item: The updated item.
@@ -102,12 +100,12 @@ class GenericBaseRepository(
         raise NotImplementedError()
 
     @abc.abstractmethod
-    async def replace(self, id: _Id, payload: _Replace) -> _Item:
+    async def replace(self, id: _Id, payload: _Replace, **kwargs: Any) -> _Item:
         """Replace an item in the store.
 
         Args:
-            id (_Id): The item ID to update.
-            payload (_Replace): The new data to apply to the item.
+            id: The item ID to update.
+            payload: The new data to apply to the item.
 
         Returns:
             _Item: The updated item.

@@ -1,5 +1,5 @@
 import abc
-from typing import Any, ClassVar, Generic, Iterable, Type, TypeVar, cast
+from typing import Any, ClassVar, Generic, Iterable, Optional, Type, TypeVar, cast
 
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -53,7 +53,10 @@ class DatabaseRepository(
                 existing item.
         """
 
-        assert session is not None
+        if session is None:
+            raise ValueError("Session was not provided.")
+        elif not isinstance(session, AsyncSession):  # pragma nocover
+            raise TypeError("Invalid session: not an `AsyncSession` instance.")
         self.session = session
         self.item_mapper = item_mapper
         self.create_mapper = create_mapper
@@ -61,21 +64,28 @@ class DatabaseRepository(
         self.replace_mapper = replace_mapper
 
     @classmethod
-    def get_db_model(cls) -> Type[_Model]:
+    def get_db_model(cls) -> Type[_Model]:  # pragma nocover
         """Retrieve the database model.
 
         Returns:
             ModelType: The model class to use.
         """
-        assert cls.model_class is not None, (
-            "The database model was not set for `{class_name}`. Please set the "
-            "`{class_name}.model_class` attribute or override "
-            "`{class_name}.{get_model_method}` method."
-        ).format(
-            get_model_method=cls.get_db_model.__name__,
-            class_name=f"{cls.__module__}.{cls.__qualname__}",  # type: ignore
-        )
-        assert isinstance(cls.model_class, DeclarativeMeta)
+        message: Optional[str] = None
+        if cls.model_class is None:
+            message = (
+                "The database model was not set for `{class_name}`. Please set the "
+                "`{class_name}.model_class` attribute or override "
+                "`{class_name}.{get_model_method}` method."
+            )
+        if not isinstance(cls.model_class, DeclarativeMeta):
+            message = "The class '{class_name}' is not a SQLALchemy model."
+        if message is not None:
+            raise AssertionError(
+                message.format(
+                    get_model_method=cls.get_db_model.__name__,
+                    class_name=f"{cls.__module__}.{cls.__qualname__}",  # type: ignore
+                )
+            )
         return cast(Type[_Model], cls.model_class)
 
     def get_base_query(self) -> Select:
@@ -87,7 +97,7 @@ class DatabaseRepository(
         return sa.select(self.get_db_model())
 
     @classmethod
-    def get_id_field(cls) -> sa.Column:
+    def get_id_field(cls) -> sa.Column:  # pragma nocover
         """Retrieve the primary key column.
 
         Multi-column primary keys are not supported.
@@ -95,14 +105,16 @@ class DatabaseRepository(
         Returns:
             sa.Column: The primery key column.
         """
-        assert cls.primary_key_column is not None, (
-            "The primary key column was not set. Please set the "
-            "`{class_name}.primary_key_column` attribute or override the "
-            "`{class_name}.{method_name}` method."
-        ).format(
-            class_name=f"{cls.__module__}.{cls.__name__}",  # type: ignore
-            method_name=cls.get_id_field.__name__,
-        )
+        if cls.primary_key_column is None:
+            msg = (
+                "The primary key column was not set. Please set the "
+                "`{class_name}.primary_key_column` attribute or override the "
+                "`{class_name}.{method_name}` method."
+            ).format(
+                class_name=f"{cls.__module__}.{cls.__name__}",  # type: ignore
+                method_name=cls.get_id_field.__name__,
+            )
+            raise AssertionError(msg)
         return cls.primary_key_column
 
     def decorate_query(self, select: Select, **query_filters: Any) -> Select:
@@ -118,9 +130,9 @@ class DatabaseRepository(
         """
         return select
 
-    async def get_unmapped_by_id(self, id: _Id) -> _Model:
+    async def get_unmapped_by_id(self, id: _Id, **kwargs: Any) -> _Model:
         result = await self.session.scalar(
-            self._get_query().where(self.get_id_field() == id)
+            self.get_query(**kwargs).where(self.get_id_field() == id)
         )
 
         if result is None:
@@ -128,16 +140,16 @@ class DatabaseRepository(
 
         return result
 
-    def _get_query(self, **query_filters: Any) -> Select:
+    def get_query(self, **query_filters: Any) -> Select:
         return self.decorate_query(self.get_base_query(), **query_filters)
 
     def _get_list_query(
         self,
-        offset: int = None,
-        size: int = None,
+        offset: Optional[int] = None,
+        size: Optional[int] = None,
         **query_filters: Any,
     ) -> Select:
-        query = self._get_query(**query_filters)
+        query = self.get_query(**query_filters)
 
         if size:
             query = query.limit(size)
@@ -153,9 +165,9 @@ class DatabaseRepository(
     def map_items(self, session: Session, items: Iterable[_Model]) -> list[_Item]:
         return [self.map_item(session, item) for item in items]
 
-    async def get_by_id(self, id: _Id) -> _Item:
+    async def get_by_id(self, id: _Id, **kwargs: Any) -> _Item:
         return await self.session.run_sync(
-            self.map_item, await self.get_unmapped_by_id(id)
+            self.map_item, await self.get_unmapped_by_id(id, **kwargs)
         )
 
     async def get_count(self, **query_filters: Any) -> int:
@@ -166,7 +178,11 @@ class DatabaseRepository(
         )
 
     async def get_list(
-        self, *, offset: int = None, size: int = None, **query_filters: Any
+        self,
+        *,
+        offset: Optional[int] = None,
+        size: Optional[int] = None,
+        **query_filters: Any,
     ) -> list[_Item]:
         query = self._get_list_query(offset, size, **query_filters)
 
@@ -174,27 +190,31 @@ class DatabaseRepository(
             self.map_items, await self.session.scalars(query)
         )
 
-    async def add(self, payload: _Create) -> _Item:
+    async def add(self, payload: _Create, **kwargs: Any) -> _Item:
         model = self.create_mapper(payload)
-        assert isinstance(model, self.get_db_model())
+        if not isinstance(model, self.get_db_model()):  # pragma: nocover
+            raise AssertionError(
+                "The creation mapper did not built a valid model instance."
+            )
 
         async with self.session.begin_nested():
-            await self.postprocess_model(model)
+            await self.postprocess_model(model, **kwargs)
             self.session.add(model)
 
         return await self.session.run_sync(self.map_item, model)
 
-    async def postprocess_model(self, model: _Model):
-        pass
+    async def postprocess_model(self, model: _Model, **extra_values: Any):
+        for attr, value in extra_values.items():  # pragma nocover
+            setattr(model, attr, value)
 
-    async def remove(self, id: _Id):
-        model = await self.get_unmapped_by_id(id)
+    async def remove(self, id: _Id, **kwargs: Any):
+        model = await self.get_unmapped_by_id(id, **kwargs)
 
         async with self.session.begin_nested():
             await self.session.delete(model)
 
-    async def _update(self, id: _Id, payload: dict[str, Any]) -> _Item:
-        model = await self.get_unmapped_by_id(id)
+    async def _update(self, id: _Id, payload: dict[str, Any], **kwargs: Any) -> _Item:
+        model = await self.get_unmapped_by_id(id, **kwargs)
 
         async with self.session.begin_nested():
             self._patch_with(model, payload)
@@ -205,8 +225,10 @@ class DatabaseRepository(
         for attr, value in payload.items():
             setattr(model, attr, value)
 
-    async def update(self, id: _Id, payload: _Update) -> _Item:
-        return await self._update(id, self.update_mapper(payload, exclude_unset=True))
+    async def update(self, id: _Id, payload: _Update, **kwargs: Any) -> _Item:
+        return await self._update(
+            id, self.update_mapper(payload, exclude_unset=True), **kwargs
+        )
 
-    async def replace(self, id: _Id, payload: _Replace):
-        return await self._update(id, self.replace_mapper(payload))
+    async def replace(self, id: _Id, payload: _Replace, **kwargs: Any):
+        return await self._update(id, self.replace_mapper(payload), **kwargs)

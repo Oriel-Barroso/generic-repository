@@ -1,21 +1,21 @@
-import typing
+from typing import Any, Generic, Optional, TypeVar
 
 from .base import GenericBaseRepository, _Create, _Id, _Item, _Replace, _Update
 from .mapper import Mapper
 
-_Repo = typing.TypeVar("_Repo", bound=GenericBaseRepository)
-_MappedItem = typing.TypeVar("_MappedItem")
-_MappedCreate = typing.TypeVar("_MappedCreate")
-_MappedUpdate = typing.TypeVar("_MappedUpdate")
-_MappedReplace = typing.TypeVar("_MappedReplace")
-_MappedId = typing.TypeVar("_MappedId")
+_Repo = TypeVar("_Repo", bound=GenericBaseRepository)
+_MappedItem = TypeVar("_MappedItem")
+_MappedCreate = TypeVar("_MappedCreate")
+_MappedUpdate = TypeVar("_MappedUpdate")
+_MappedReplace = TypeVar("_MappedReplace")
+_MappedId = TypeVar("_MappedId")
 
 
 class MappedRepository(
     GenericBaseRepository[
         _MappedId, _MappedCreate, _MappedUpdate, _MappedReplace, _MappedItem
     ],
-    typing.Generic[
+    Generic[
         _MappedId,
         _MappedCreate,
         _MappedUpdate,
@@ -63,35 +63,43 @@ class MappedRepository(
         self.update_mapper = update_mapper
         self.replace_mapper = replace_mapper
 
-    async def add(self, payload: _MappedCreate) -> _MappedItem:
-        return self.item_mapper(await self.repository.add(self.create_mapper(payload)))
+    async def add(self, payload: _MappedCreate, **kwargs: Any) -> _MappedItem:
+        return self.item_mapper(
+            await self.repository.add(self.create_mapper(payload), **kwargs)
+        )
 
-    async def update(self, id: _MappedId, payload: _MappedUpdate) -> _MappedItem:
+    async def update(
+        self, id: _MappedId, payload: _MappedUpdate, **kwargs: Any
+    ) -> _MappedItem:
         return self.item_mapper(
             await self.repository.update(
-                self.id_mapper(id), self.update_mapper(payload)
+                self.id_mapper(id), self.update_mapper(payload), **kwargs
             )
         )
 
-    async def get_by_id(self, id: _MappedId) -> _MappedItem:
-        return self.item_mapper(await self.repository.get_by_id(self.id_mapper(id)))
+    async def get_by_id(self, id: _MappedId, **kwargs: Any) -> _MappedItem:
+        return self.item_mapper(
+            await self.repository.get_by_id(self.id_mapper(id), **kwargs)
+        )
 
-    async def replace(self, id: _MappedId, payload: _MappedReplace) -> _MappedItem:
+    async def replace(
+        self, id: _MappedId, payload: _MappedReplace, **kwargs: Any
+    ) -> _MappedItem:
         return self.item_mapper(
             await self.repository.replace(
-                self.id_mapper(id), self.replace_mapper(payload)
+                self.id_mapper(id), self.replace_mapper(payload), **kwargs
             )
         )
 
-    async def get_count(self, **query_filters: typing.Any) -> int:
+    async def get_count(self, **query_filters: Any) -> int:
         return await self.repository.get_count(**query_filters)
 
     async def get_list(
         self,
         *,
-        offset: typing.Optional[int] = None,
-        size: typing.Optional[int] = None,
-        **query_filters: typing.Any,
+        offset: Optional[int] = None,
+        size: Optional[int] = None,
+        **query_filters: Any,
     ) -> list[_MappedItem]:
         return [
             self.item_mapper(item)
@@ -100,5 +108,5 @@ class MappedRepository(
             )
         ]
 
-    async def remove(self, id: _MappedId):
-        return await self.repository.remove(self.id_mapper(id))
+    async def remove(self, id: _MappedId, **kwargs: Any):
+        return await self.repository.remove(self.id_mapper(id), **kwargs)
