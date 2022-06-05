@@ -18,6 +18,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - run: pipx install poetry
+        name: Install poetry
+      - run: pipx install coveralls
+        name: Install coveralls
 
       - uses: actions/setup-python@v3
         with:
@@ -26,6 +29,7 @@ jobs:
       - run: poetry install
       - name: Run tests
         run: poetry run pytest --cov
+
       - name: Add reports for ${{ matrix.python-version }}
         run: coveralls
         env:
