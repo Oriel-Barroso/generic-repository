@@ -1,6 +1,5 @@
 import cgi
 import functools
-import math
 from http import HTTPStatus
 from typing import Any, Dict, List, Optional, cast
 
@@ -111,21 +110,6 @@ class HttpRepository(GenericBaseRepository[str, Any, Any, Any, Any]):
 
         Returns:
             Any: The resource as Json.
-
-        >>> import asyncio
-        >>> import httpx
-        >>> loop = asyncio.new_event_loop()
-        >>> repo = HttpRepository(
-        ...     httpx.AsyncClient(base_url='https://jsonplaceholder.typicode.com/posts')
-        ... )
-        >>> loop.run_until_complete(repo.get_by_id('1'))
-        {...}
-        >>> loop.run_until_complete(repo.get_by_id(200))
-        Traceback (most recent call last):
-          ...
-        generic_repository.exceptions.ItemNotFoundException: ...
-        >>> loop.close()
-        >>>
         """
         return await self.process_response(
             await self.client.get(self.get_id_url(id), **self.merge_params(kwargs))
@@ -135,8 +119,9 @@ class HttpRepository(GenericBaseRepository[str, Any, Any, Any, Any]):
         params = {}
         if size is not None:
             params.update(size=size)
-            if offset is not None:
-                params.update(page=math.ceil(offset / size))
+        if offset is not None:
+            params.update(offset=offset)
+
         request_params = self.merge_params(query_filters, params)
         return await self.process_response(
             await self.client.get(self.list_url, **request_params)
@@ -192,7 +177,7 @@ class HttpRepository(GenericBaseRepository[str, Any, Any, Any, Any]):
             list_url = f"{list_url}/"
         return list_url
 
-    async def get_list(self, *, offset=None, size=None, **query_filters):
+    async def get_list(self, **query_filters):
         """Return a list of items.
 
         Args:
@@ -202,41 +187,14 @@ class HttpRepository(GenericBaseRepository[str, Any, Any, Any, Any]):
         Returns:
             list: Items from the remote source.
 
-        >>> import asyncio
-        >>> import httpx
-        >>> loop = asyncio.new_event_loop()
-        >>> repo = HttpRepository(
-        ...     httpx.AsyncClient(base_url='https://jsonplaceholder.typicode.com/posts')
-        ... )
-        >>> loop.run_until_complete(repo.get_list(offset=10, size=3))
-        [...]
-        >>> loop.run_until_complete(repo.get_list(offset=10))
-        [...]
-        >>> loop.run_until_complete(repo.get_list(size=3))
-        [...]
-        >>> loop.close()
-        >>>
         """
-        return self.list_mapper(
-            await self._get_list(size=size, offset=offset, **query_filters)
-        )
+        return self.list_mapper(await self._get_list(**query_filters))
 
     async def get_count(self, **query_filters: Any) -> int:
         """Return how many items the remote source have in it's database.
 
         Returns:
             int: How many items.
-
-        >>> import asyncio
-        >>> import httpx
-        >>> loop = asyncio.new_event_loop()
-        >>> repo = HttpRepository(
-        ...     httpx.AsyncClient(base_url='https://jsonplaceholder.typicode.com/posts')
-        ... )
-        >>> loop.run_until_complete(repo.get_count())
-        100
-        >>> loop.close()
-        >>>
         """
         return self.count_mapper(await self._get_list(**query_filters))
 
@@ -248,46 +206,8 @@ class HttpRepository(GenericBaseRepository[str, Any, Any, Any, Any]):
 
         Returns:
             Any: The newly created item.
-
-        >>> import asyncio
-        >>> import httpx
-        >>> loop = asyncio.new_event_loop()
-        >>> repo = HttpRepository(
-        ...     httpx.AsyncClient(base_url='https://jsonplaceholder.typicode.com/posts')
-        ... )
-        >>> payload = {
-        ...     'userId': 1,
-        ...     'title': 'Test title',
-        ...     'body': 'Just a body...',
-        ... }
-        >>> result = loop.run_until_complete(repo.add(payload))
-        >>> result
-        {...}
-        >>> result['title']
-        'Test title'
-        >>> payload = {
-        ...     'title': 'Test title',
-        ...     'body': 'Just a body...',
-        ... }
-        >>> extra = {'userId': 45000}
-        >>> result = loop.run_until_complete(repo.add(payload, data=extra))
-        >>> result
-        {...}
-        >>> result['userId']
-        45000
-        >>> # But raises if invalid payload or data:
-        >>> loop.run_until_complete(repo.add(None, data={}))
-        Traceback (most recent call last):
-          ...
-        ValueError: ...
-        >>> loop.run_until_complete(repo.add({}, data=45))
-        Traceback (most recent call last):
-          ...
-        ValueError: ...
-        >>> loop.close()
-        >>>
         """
-        extra_data = kwargs.pop("data", None)
+        extra_data = kwargs.pop("extra_data", None)
         if extra_data is not None:
             if not isinstance(payload, dict):
                 raise ValueError("Cannot update the payload with the extra data.")
@@ -299,7 +219,7 @@ class HttpRepository(GenericBaseRepository[str, Any, Any, Any, Any]):
 
         return await self.process_response(
             await self.client.post(
-                self.list_url, json=payload, **self.merge_params(kwargs)
+                self.list_url, json=payload, **self.merge_params(kwargs, extra_data)
             )
         )
 
@@ -312,20 +232,6 @@ class HttpRepository(GenericBaseRepository[str, Any, Any, Any, Any]):
 
         Returns:
             Any: Json-compatibel updated data.
-
-        >>> from asyncio import new_event_loop
-        >>> loop = new_event_loop()
-        >>> repo = HttpRepository(
-        ...     httpx.AsyncClient(),
-        ...     base_url='https://jsonplaceholder.cypress.io/posts'
-        ... )
-        >>> result = loop.run_until_complete(
-        ...     repo.update('2', {'title': 'Another title.'})
-        ... )
-        >>> result['title']
-        'Another title.'
-        >>> loop.close()
-        >>>
         """
         return await self.process_response(
             await self.client.patch(
@@ -345,20 +251,6 @@ class HttpRepository(GenericBaseRepository[str, Any, Any, Any, Any]):
 
         Returns:
             Any: The newly updated resource.
-
-
-        >>> from asyncio import new_event_loop
-        >>> loop = new_event_loop()
-        >>> repo = HttpRepository(
-        ...     httpx.AsyncClient(),
-        ...     base_url='https://jsonplaceholder.cypress.io/posts'
-        ... )
-        >>> loop.run_until_complete(
-        ...     repo.replace('1', {'userId': 2, 'title': 'Other title.'})
-        ... )
-        {... 'title': 'Other title.'...}
-        >>> loop.close()
-        >>>
         """
         return await self.process_response(
             await self.client.put(self.get_id_url(id), json=payload)
@@ -369,22 +261,6 @@ class HttpRepository(GenericBaseRepository[str, Any, Any, Any, Any]):
 
         Args:
             id: The resource ID to remove.
-
-        >>> from asyncio import new_event_loop
-        >>> loop = new_event_loop()
-        >>> repo = HttpRepository(
-        ...     httpx.AsyncClient(),
-        ...     base_url='https://jsonplaceholder.cypress.io/posts'
-        ... )
-        >>> loop.run_until_complete(repo.remove('1'))
-
-        >>> loop.run_until_complete(repo.remove('200'))
-        Traceback (most recent call last):
-          ...
-        generic_repository.exceptions.ItemNotFoundException: ...
-        >>> loop.close()
-        >>>
-        >>>
         """
         await self.process_response(
             await self.client.delete(self.get_id_url(id), **self.merge_params(kwargs))

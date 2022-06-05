@@ -56,6 +56,9 @@ class CacheRepository(
         self.get_count.cache_clear()
         self.get_by_id.cache_clear()
 
+    async def add(self, payload: _Create, **kwargs: Any) -> _Item:
+        return await self.repository.add(payload)
+
     @functools.cache
     @_task
     async def get_list(

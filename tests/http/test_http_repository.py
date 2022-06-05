@@ -5,8 +5,8 @@ import pytest
 
 from generic_repository import HttpRepository, InvalidPayloadException
 
-from .factories import TodoItemDataFactory
-from .schemas import TodoItem
+from ..factories import TodoDataFactory
+from ..todos import Todo
 
 pytestmark = [
     pytest.mark.anyio(),
@@ -14,24 +14,25 @@ pytestmark = [
 
 
 @pytest.fixture()
-async def some_items(repo: HttpRepository, anyio_backend):
+async def some_items(http_repository: HttpRepository, anyio_backend):
     return [
-        await repo.add(payload) for payload in TodoItemDataFactory.create_batch(100)
+        await http_repository.add(payload)
+        for payload in TodoDataFactory.create_batch(100)
     ]
 
 
 @pytest.fixture()
-async def item(repo: HttpRepository, anyio_backend):
-    return TodoItem.parse_obj(await repo.add(TodoItemDataFactory.create()))
+async def item(http_repository: HttpRepository, anyio_backend):
+    return Todo.parse_obj(await http_repository.add(TodoDataFactory.create()))
 
 
-async def test_list_empty(repo: HttpRepository):
-    items = await repo.get_list()
+async def test_list_empty(http_repository: HttpRepository):
+    items = await http_repository.get_list()
     assert len(items) == 0  # nosec assert_used
 
 
-async def test_list(some_items: List[Any], repo: HttpRepository):
-    result = await repo.get_list()
+async def test_list(some_items: List[Any], http_repository: HttpRepository):
+    result = await http_repository.get_list()
     assert len(result) == len(some_items)  # nosec: assert_used
 
 
@@ -40,18 +41,29 @@ async def test_list(some_items: List[Any], repo: HttpRepository):
     (
         "a string",
         ["a", "list"],
-        TodoItemDataFactory.create(title=None, body="A bad title."),
+        TodoDataFactory.create(title=None, body="A bad title."),
     ),
 )
-async def test_send_invalid(repo: HttpRepository, bad_payload: Any):
+async def test_send_invalid(http_repository: HttpRepository, bad_payload: Any):
     with pytest.raises(InvalidPayloadException):
-        await repo.add(bad_payload)
+        await http_repository.add(bad_payload)
 
 
-async def test_raises_httpx_exception(repo: HttpRepository):
+@pytest.mark.parametrize(
+    "extra_data",
+    ({"extra_1": 1}, {"extra_2": "str"}, "an str", 45),
+)
+@pytest.mark.parametrize(
+    "payload",
+    (pytest.param(TodoDataFactory(), marks=pytest.mark.xfail()), "an str", 45),
+)
+async def test_post_extra_data(
+    http_repository: HttpRepository, payload: Any, extra_data: Any
+):
+    with pytest.raises(ValueError):
+        await http_repository.add(payload, extra_data=extra_data)
+
+
+async def test_raises_httpx_exception(http_repository: HttpRepository):
     with pytest.raises(httpx.HTTPStatusError):
-        await repo.get_list(params=dict(status_code=500))
-
-
-async def test_remove(item: TodoItem, repo: HttpRepository):
-    await repo.remove(str(item.id))
+        await http_repository.get_list(params=dict(status_code=500))

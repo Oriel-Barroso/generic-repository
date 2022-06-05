@@ -1,7 +1,7 @@
 import factory
 
-from . import models
-from .repository import AddTodoPayload
+from .sqlalchemy import models
+from .todos import AddTodoPayload
 
 
 class TodoItemModelFactory(factory.Factory):
@@ -14,3 +14,8 @@ class TodoItemModelFactory(factory.Factory):
 class AddTodoFactory(TodoItemModelFactory):
     class Meta:
         model = AddTodoPayload
+
+
+class TodoDataFactory(TodoItemModelFactory):
+    class Meta:
+        model = dict

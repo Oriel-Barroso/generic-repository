@@ -1,39 +1,25 @@
-import pydantic
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from generic_repository.database import DatabaseRepository
-from generic_repository.mapper import ConstructorMapper, ToFunctionArgsMapper
-from generic_repository.pydantic import PydanticDictMapper, PydanticObjectMapper
+from generic_repository import (
+    ConstructorMapper,
+    DatabaseRepository,
+    PydanticDictMapper,
+    PydanticObjectMapper,
+    ToFunctionArgsMapper,
+)
 
+from ..todos import AddTodoPayload, Todo, TodoRepository, UpdateTodoPayload
 from .models import TodoItem
 
 
-class BaseTodo(pydantic.BaseModel):
-    text: str | None = None
-
-
-class AddTodoPayload(BaseTodo):
-    title: str
-
-
-class UpdateTodoPayload(BaseTodo):
-    title: str | None = None
-
-
-class Todo(AddTodoPayload):
-    id: int
-
-    class Config:
-        orm_mode = True
-
-
-class TodoRepository(
+class DbTodoRepository(
     DatabaseRepository[
         TodoItem, AddTodoPayload, UpdateTodoPayload, AddTodoPayload, Todo, int
-    ]
+    ],
+    TodoRepository,
 ):
     model_class = TodoItem
-    primary_key_column = TodoItem.id
+    primary_key_column = TodoItem.id  # type: ignore
 
     def __init__(self, session: AsyncSession) -> None:
         super().__init__(
