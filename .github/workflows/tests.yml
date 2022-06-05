@@ -31,7 +31,7 @@ jobs:
         run: poetry run pytest --cov
 
       - name: Add reports for ${{ matrix.python-version }}
-        run: coveralls
+        run: coveralls --service=github-actions
         env:
           COVERALLS_PARALLEL: "true"
           COVERALLS_FLAG_NAME: python ${{ matrix.python-version }}
