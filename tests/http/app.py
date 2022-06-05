@@ -20,7 +20,7 @@ def get_app():  # noqa
     data: Dict[int, Dict[str, Any]] = {}
 
     @app.get("/", response_model=List[Todo])
-    def get_items(size: int | None = None, offset: int | None = None):
+    def get_items(size: Optional[int] = None, offset: Optional[int] = None):
         items = list(data.values())
         if offset:
             items = items[offset:]
@@ -31,7 +31,9 @@ def get_app():  # noqa
 
     @app.post("/", response_model=Todo, status_code=status.HTTP_201_CREATED)
     def add_item(
-        payload: AddTodoPayload, extra_1: int | None = None, extra_2: str | None = None
+        payload: AddTodoPayload,
+        extra_1: Optional[int] = None,
+        extra_2: Optional[str] = None,
     ):
         new_item = Todo(**payload.dict(), id=max(data.keys()) + 1 if data else 1)
         data[new_item.id] = json.loads(new_item.json())

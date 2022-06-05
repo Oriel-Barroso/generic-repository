@@ -11,9 +11,11 @@ version = "1.2.0"
 
 [tool.poetry.dependencies]
 SQLAlchemy = {version = "^1.4.0", optional = true}
+cached-property = {version = "^1.5.2", python = "<3.8"}
 httpx = {version = "^0.23.0", optional = true}
 pydantic = {version = "^1.9.0", optional = true}
-python = "^3.10"
+python = "^3.7"
+typing-extensions = {version = "^4.2.0", python = "<3.10"}
 
 [tool.poetry.dev-dependencies]
 SQLAlchemy = {version = "^1.4", extras = ["aiosqlite", "mypy"]}
@@ -25,22 +27,19 @@ devtools = "^0.8.0"
 factory-boy = "^3.2.1"
 fastapi = "^0.78.0"
 flake8 = "^4.0.1"
+httpx = "^0.23.0"
+importlib-metadata = {version = "<4.3.0", python = "<3.8"}
 isort = "^5.10.1"
 mypy = "^0.950"
 pydantic = "^1.9.0"
 pytest = "^7.1.2"
 pytest-cov = "^3.0.0"
-httpx = "^0.23.0"
 pytest-sugar = "^0.9.4"
 
 [tool.poetry.extras]
 http = ["httpx"]
 pydantic = ["pydantic"]
 sqlalchemy = ["SQLAlchemy"]
-
-[[tool.poetry.source]]
-name = "aws"
-url = "https://imcreate-128983747618.d.codeartifact.us-east-1.amazonaws.com/pypi/python-packs/"
 
 [build-system]
 build-backend = "poetry.core.masonry.api"

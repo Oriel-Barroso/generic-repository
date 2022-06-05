@@ -1,16 +1,25 @@
 import asyncio
-import functools
+from functools import wraps
+
+try:  # pragma nocover
+    from functools import cache  # type: ignore
+except ImportError:  # pragma nocover
+    from functools import lru_cache
+
+    cache = lru_cache()
 from typing import (
     Any,
     Callable,
     Coroutine,
     Generator,
     Generic,
+    List,
     Optional,
-    ParamSpec,
     TypeVar,
     Union,
 )
+
+from typing_extensions import ParamSpec
 
 from .base import GenericBaseRepository, _Create, _Id, _Item, _Replace, _Update
 
@@ -23,10 +32,10 @@ def _task(
         _Params, Union[Generator[Any, None, _FuncOut], Coroutine[Any, Any, _FuncOut]]
     ]
 ):
-    @functools.wraps(func)
+    @wraps(func)
     def decorated(
         *args: _Params.args, **kwargs: _Params.kwargs
-    ) -> asyncio.Task[_FuncOut]:
+    ) -> "asyncio.Task[_FuncOut]":
         return asyncio.create_task(func(*args, **kwargs))
 
     return decorated
@@ -59,7 +68,7 @@ class CacheRepository(
     async def add(self, payload: _Create, **kwargs: Any) -> _Item:
         return await self.repository.add(payload)
 
-    @functools.cache
+    @cache
     @_task
     async def get_list(
         self,
@@ -67,15 +76,15 @@ class CacheRepository(
         offset: Optional[int] = None,
         size: Optional[int] = None,
         **query_filters: Any
-    ) -> list[_Item]:
+    ) -> List[_Item]:
         return await self.repository.get_list(offset=offset, size=size, **query_filters)
 
-    @functools.cache
+    @cache
     @_task
     async def get_count(self, **query_filters: Any) -> int:
         return await self.repository.get_count()
 
-    @functools.cache
+    @cache
     @_task
     async def get_by_id(self, id: _Id) -> _Item:
         return await self.repository.get_by_id(id)
