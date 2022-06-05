@@ -1,0 +1,30 @@
+on:
+  pull_request:
+    branches:
+      - develop
+
+  push:
+    branches:
+      - develop
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    name: Run tests
+    strategy:
+      fail-fast: true
+      matrix:
+        python-version: ["3.7", "3.8", "3.9", "3.10"]
+    steps:
+      - uses: action/checkout@v3
+      - run: pipx install poetry
+
+      - uses: actions/setup-python@v3
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "poetry"
+      - run: poetry install
+      - name: Run tests
+        run: poetry run pytest --cov
+      - name: Upload coverage report
+        uses: codecov/codecov-action@v2
