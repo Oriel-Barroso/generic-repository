@@ -26,5 +26,22 @@ jobs:
       - run: poetry install
       - name: Run tests
         run: poetry run pytest --cov
-      - name: Upload coverage report
-        uses: codecov/codecov-action@v2
+      - name: Add reports for ${{ matrix.python-version }}
+        run: coveralls
+        env:
+          COVERALLS_PARALLEL: "true"
+          COVERALLS_FLAG_NAME: python ${{ matrix.python-version }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  coveralls:
+    name: Indicate completion to coveralls.io
+    needs: test
+    runs-on: ubuntu-latest
+    container: python:3-slim
+    steps:
+      - name: Finished
+        run: |
+          pip3 install --upgrade coveralls
+          coveralls --service=github --finish
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
