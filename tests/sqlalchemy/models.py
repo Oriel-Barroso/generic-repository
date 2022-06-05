@@ -1,3 +1,5 @@
+from typing import Type
+
 import sqlalchemy as sa
 from sqlalchemy.orm.decl_api import as_declarative, declared_attr
 
@@ -7,7 +9,7 @@ class Base:
     metadata: sa.MetaData
 
     @declared_attr
-    def id(cls) -> "sa.Column[sa.Integer]":
+    def id(cls: Type) -> "sa.Column[sa.Integer]":
         return sa.Column(f"{cls.__name__.lower()}_id", sa.Integer, primary_key=True)
 
 
