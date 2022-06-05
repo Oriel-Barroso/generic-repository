@@ -145,6 +145,3 @@ cython_debug/
 .elasticbeanstalk/*
 !.elasticbeanstalk/*.cfg.yml
 !.elasticbeanstalk/*.global.yml
-
-# This is a library, so exclude the lock file too.
-poetry.lock

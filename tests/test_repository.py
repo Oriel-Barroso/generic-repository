@@ -1,3 +1,5 @@
+from typing import List
+
 import factory
 import pytest
 
@@ -23,23 +25,23 @@ async def item(repository: TodoRepository, anyio_backend):
     return await repository.add(item)
 
 
-async def test_count(repository: TodoRepository, items: list[Todo]):
+async def test_count(repository: TodoRepository, items: List[Todo]):
     count = await repository.get_count()
     assert count == len(items)  # nosec
 
 
-async def test_list_without_size(items: list[Todo], repository: TodoRepository):
+async def test_list_without_size(items: List[Todo], repository: TodoRepository):
     result = await repository.get_list()
     assert len(result) == len(items)  # nosec
 
 
-async def test_list_with_size(items: list[Todo], repository: TodoRepository):
+async def test_list_with_size(items: List[Todo], repository: TodoRepository):
     result = await repository.get_list(size=10)
     assert len(result) == 10  # nosec
 
 
 @pytest.mark.xfail()
-async def test_list_with_offset(items: list[Todo], repository: TodoRepository):
+async def test_list_with_offset(items: List[Todo], repository: TodoRepository):
     result = await repository.get_list(offset=10)
 
     assert len(result) == len(items) - 10  # nosec

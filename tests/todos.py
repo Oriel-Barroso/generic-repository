@@ -1,10 +1,12 @@
+from typing import Optional
+
 import pydantic
 
 from generic_repository import GenericBaseRepository
 
 
 class BaseTodo(pydantic.BaseModel):
-    text: str | None = None
+    text: Optional[str] = None
 
 
 class AddTodoPayload(BaseTodo):
@@ -12,7 +14,7 @@ class AddTodoPayload(BaseTodo):
 
 
 class UpdateTodoPayload(BaseTodo):
-    title: str | None = None
+    title: Optional[str] = None
 
 
 class Todo(AddTodoPayload):

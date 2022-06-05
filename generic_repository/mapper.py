@@ -5,15 +5,20 @@ from typing import (
     Callable,
     Dict,
     Generic,
+    List,
     Mapping,
     NamedTuple,
     Optional,
-    ParamSpec,
     Sequence,
     Type,
     TypeVar,
     Union,
 )
+
+try:
+    from typing import ParamSpec  # type: ignore
+except ImportError:  # pragma nocover
+    from typing_extensions import ParamSpec
 
 _MapperParams = ParamSpec("_MapperParams")
 _In = TypeVar("_In")
@@ -259,7 +264,7 @@ class _Arguments(NamedTuple):
     kwargs: Dict[str, Any]
 
 
-class ToFunctionArgsMapper(Mapper[dict[str, Any] | Sequence, _Arguments]):
+class ToFunctionArgsMapper(Mapper[Union[Dict[str, Any], Sequence], _Arguments]):
     """Maps a dict to kwargs part of a function call.
 
     Example:
@@ -285,8 +290,8 @@ class ToFunctionArgsMapper(Mapper[dict[str, Any] | Sequence, _Arguments]):
     """
 
     def map_item(self, item, **default_kwargs):
-        args: list[Any] = []
-        kwargs: dict[str, Any] = {}
+        args: List[Any] = []
+        kwargs: Dict[str, Any] = {}
         kwargs.update(default_kwargs)
         if isinstance(item, dict):
             kwargs.update(item)

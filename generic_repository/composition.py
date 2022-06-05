@@ -1,4 +1,4 @@
-from typing import Any, Generic, Optional, TypeVar
+from typing import Any, Generic, List, Optional, TypeVar
 
 from .base import GenericBaseRepository, _Create, _Id, _Item, _Replace, _Update
 from .mapper import Mapper
@@ -100,7 +100,7 @@ class MappedRepository(
         offset: Optional[int] = None,
         size: Optional[int] = None,
         **query_filters: Any,
-    ) -> list[_MappedItem]:
+    ) -> List[_MappedItem]:
         return [
             self.item_mapper(item)
             for item in await self.repository.get_list(

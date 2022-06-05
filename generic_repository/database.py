@@ -1,5 +1,16 @@
 import abc
-from typing import Any, ClassVar, Generic, Iterable, Optional, Type, TypeVar, cast
+from typing import (
+    Any,
+    ClassVar,
+    Dict,
+    Generic,
+    Iterable,
+    List,
+    Optional,
+    Type,
+    TypeVar,
+    cast,
+)
 
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,16 +40,16 @@ class DatabaseRepository(
         primary_key (sa.Column): The primary key column.
     """
 
-    model_class: ClassVar[Type[Any] | None] = None
-    primary_key_column: ClassVar[sa.Column | None] = None
+    model_class: ClassVar[Optional[Type[Any]]] = None
+    primary_key_column: ClassVar[Optional[sa.Column]] = None
 
     def __init__(
         self,
         session: AsyncSession,
         item_mapper: Mapper[_Model, _Item],
         create_mapper: Mapper[_Create, _Model],
-        update_mapper: Mapper[_Update, dict[str, Any]],
-        replace_mapper: Mapper[_Replace, dict[str, Any]],
+        update_mapper: Mapper[_Update, Dict[str, Any]],
+        replace_mapper: Mapper[_Replace, Dict[str, Any]],
     ) -> None:
         """Initialize this crud instance.
 
@@ -47,9 +58,9 @@ class DatabaseRepository(
             item_mapper (Mapper[_Model, _Item]): The mapper implementation to map
                 models to items.
             create_mapper (Mapper[_Create, _Model]): Mapper to build item models.
-            update_mapper (Mapper[_Update, dict[str,Any]]): Mapper between update
+            update_mapper (Mapper[_Update, Dict[str,Any]]): Mapper between update
                 payload and dict.
-            replace_mapper (Mapper[_Replace, dict[str,Any]]): Mapper to replace an
+            replace_mapper (Mapper[_Replace, Dict[str,Any]]): Mapper to replace an
                 existing item.
         """
 
@@ -162,7 +173,7 @@ class DatabaseRepository(
     def map_item(self, session: Session, item: _Model) -> _Item:
         return self.item_mapper.map_item(item)
 
-    def map_items(self, session: Session, items: Iterable[_Model]) -> list[_Item]:
+    def map_items(self, session: Session, items: Iterable[_Model]) -> List[_Item]:
         return [self.map_item(session, item) for item in items]
 
     async def get_by_id(self, id: _Id, **kwargs: Any) -> _Item:
@@ -183,7 +194,7 @@ class DatabaseRepository(
         offset: Optional[int] = None,
         size: Optional[int] = None,
         **query_filters: Any,
-    ) -> list[_Item]:
+    ) -> List[_Item]:
         query = self._get_list_query(offset, size, **query_filters)
 
         return await self.session.run_sync(
@@ -213,7 +224,7 @@ class DatabaseRepository(
         async with self.session.begin_nested():
             await self.session.delete(model)
 
-    async def _update(self, id: _Id, payload: dict[str, Any], **kwargs: Any) -> _Item:
+    async def _update(self, id: _Id, payload: Dict[str, Any], **kwargs: Any) -> _Item:
         model = await self.get_unmapped_by_id(id, **kwargs)
 
         async with self.session.begin_nested():
@@ -221,7 +232,7 @@ class DatabaseRepository(
 
         return await self.session.run_sync(self.map_item, model)
 
-    def _patch_with(self, model: _Model, payload: dict[str, Any]):
+    def _patch_with(self, model: _Model, payload: Dict[str, Any]):
         for attr, value in payload.items():
             setattr(model, attr, value)
 

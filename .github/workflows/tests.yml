@@ -1,0 +1,52 @@
+on:
+  pull_request:
+    branches:
+      - develop
+
+  push:
+    branches:
+      - main
+      - develop
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    name: Run tests
+    strategy:
+      fail-fast: true
+      matrix:
+        python-version: ["3.7", "3.8", "3.9", "3.10"]
+    steps:
+      - uses: actions/checkout@v3
+      - run: pipx install poetry
+        name: Install poetry
+      - run: pipx install coveralls
+        name: Install coveralls
+
+      - uses: actions/setup-python@v3
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "poetry"
+      - run: poetry install
+      - name: Run tests
+        run: poetry run pytest --cov
+
+      - name: Add reports for ${{ matrix.python-version }}
+        run: coveralls --service=github
+        env:
+          COVERALLS_PARALLEL: "true"
+          COVERALLS_FLAG_NAME: python ${{ matrix.python-version }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  coveralls:
+    name: Indicate completion to coveralls.io
+    needs: test
+    runs-on: ubuntu-latest
+    container: python:3-slim
+    steps:
+      - name: Finished
+        run: |
+          pip3 install --upgrade coveralls
+          coveralls --service=github --finish
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

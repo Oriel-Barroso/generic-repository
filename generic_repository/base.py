@@ -1,5 +1,5 @@
 import abc
-from typing import Any, Generic, Optional, TypeVar
+from typing import Any, Generic, List, Optional, TypeVar
 
 _Create = TypeVar("_Create")
 _Update = TypeVar("_Update")
@@ -44,7 +44,7 @@ class GenericBaseRepository(
         offset: Optional[int] = None,
         size: Optional[int] = None,
         **query_filters: Any
-    ) -> list[_Item]:
+    ) -> List[_Item]:
         """Retrieve a list of items.
 
         Args:
@@ -52,7 +52,7 @@ class GenericBaseRepository(
             size: How many items to retrieve.. Defaults to None.
 
         Returns:
-            list[_Item]: A list containing the items found.
+            List[_Item]: A list containing the items found.
         """
         raise NotImplementedError()
 

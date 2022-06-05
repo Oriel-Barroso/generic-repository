@@ -1,9 +1,13 @@
 import cgi
-import functools
 from http import HTTPStatus
 from typing import Any, Dict, List, Optional, cast
 
 import httpx
+
+try:
+    from functools import cached_property  # type: ignore
+except ImportError:  # pragma nocover
+    from cached_property import cached_property  # type: ignore
 
 from .base import GenericBaseRepository
 from .exceptions import InvalidPayloadException, ItemNotFoundException
@@ -46,13 +50,13 @@ class HttpRepository(GenericBaseRepository[str, Any, Any, Any, Any]):
         self.list_mapper = list_mapper or LambdaMapper(lambda x: cast(List[Any], x))
         self.add_slash = add_slash
 
-    @functools.cached_property
+    @cached_property
     def base_url(self):
         if self._base_url is not None:  # pragma: nocover
             return self._base_url
         return ""
 
-    @functools.cached_property
+    @cached_property
     def request_params(self):
         params = {}
 
