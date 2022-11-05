@@ -1,3 +1,8 @@
+"""
+The repository module.
+
+This module contains the base class `Repository`.
+"""
 import abc
 from typing import Any, Generic, List, Optional, TypeVar
 
@@ -12,11 +17,11 @@ class Repository(Generic[_Id, _A, _U, _R, _I], abc.ABC):  # pragma nocover
     """Base class for all CRUD implementations."""
 
     @abc.abstractmethod
-    async def get_by_id(self, id: _Id, **kwargs: Any) -> _I:
+    async def get_by_id(self, item_id: _Id, **kwargs: Any) -> _I:
         """Retrieve an item by it's ID.
 
         Args:
-            id: The item ID to retrieve.
+            item_id: The item ID to retrieve.
 
         Returns:
             _Item: The item.
@@ -69,11 +74,11 @@ class Repository(Generic[_Id, _A, _U, _R, _I], abc.ABC):  # pragma nocover
         raise NotImplementedError()
 
     @abc.abstractmethod
-    async def remove(self, id: _Id, **kwargs: Any):
+    async def remove(self, item_id: _Id, **kwargs: Any):
         """Remove the item identified by the supplied ID.
 
         Args:
-            id: The item ID to remove.
+            item_id: The item ID to remove.
 
         Raises:
             ItemNotFoundException: If the item does not exist.
@@ -81,11 +86,11 @@ class Repository(Generic[_Id, _A, _U, _R, _I], abc.ABC):  # pragma nocover
         raise NotImplementedError()
 
     @abc.abstractmethod
-    async def update(self, id: _Id, payload: _U, **kwargs: Any) -> _I:
+    async def update(self, item_id: _Id, payload: _U, **kwargs: Any) -> _I:
         """Update an item.
 
         Args:
-            id: The item ID to update.
+            item_id: The item ID to update.
             payload: The new data to apply to the item.
 
         Returns:
@@ -97,11 +102,11 @@ class Repository(Generic[_Id, _A, _U, _R, _I], abc.ABC):  # pragma nocover
         raise NotImplementedError()
 
     @abc.abstractmethod
-    async def replace(self, id: _Id, payload: _R, **kwargs: Any) -> _I:
+    async def replace(self, item_id: _Id, payload: _R, **kwargs: Any) -> _I:
         """Replace an item in the store.
 
         Args:
-            id: The item ID to update.
+            item_id: The item ID to update.
             payload: The new data to apply to the item.
 
         Returns:
