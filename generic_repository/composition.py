@@ -1,7 +1,10 @@
+"""
+Composite repository implementation.
+"""
 from typing import Any, Generic, List, Optional, TypeVar
 
-from .base import _A, _I, _R, _U, Repository, _Id
 from .mapper import Mapper
+from .repository import _A, _I, _R, _U, Repository, _Id
 
 _Repo = TypeVar("_Repo", bound=Repository)
 _MappedItem = TypeVar("_MappedItem")
@@ -67,25 +70,25 @@ class MappedRepository(
         )
 
     async def update(
-        self, id: _MappedId, payload: _MappedUpdate, **kwargs: Any
+        self, item_id: _MappedId, payload: _MappedUpdate, **kwargs: Any
     ) -> _MappedItem:
         return self.item_mapper(
             await self.repository.update(
-                self.id_mapper(id), self.update_mapper(payload), **kwargs
+                self.id_mapper(item_id), self.update_mapper(payload), **kwargs
             )
         )
 
-    async def get_by_id(self, id: _MappedId, **kwargs: Any) -> _MappedItem:
+    async def get_by_id(self, item_id: _MappedId, **kwargs: Any) -> _MappedItem:
         return self.item_mapper(
-            await self.repository.get_by_id(self.id_mapper(id), **kwargs)
+            await self.repository.get_by_id(self.id_mapper(item_id), **kwargs)
         )
 
     async def replace(
-        self, id: _MappedId, payload: _MappedReplace, **kwargs: Any
+        self, item_id: _MappedId, payload: _MappedReplace, **kwargs: Any
     ) -> _MappedItem:
         return self.item_mapper(
             await self.repository.replace(
-                self.id_mapper(id), self.replace_mapper(payload), **kwargs
+                self.id_mapper(item_id), self.replace_mapper(payload), **kwargs
             )
         )
 
@@ -106,5 +109,5 @@ class MappedRepository(
             )
         ]
 
-    async def remove(self, id: _MappedId, **kwargs: Any):
-        return await self.repository.remove(self.id_mapper(id), **kwargs)
+    async def remove(self, item_id: _MappedId, **kwargs: Any):
+        return await self.repository.remove(self.id_mapper(item_id), **kwargs)
