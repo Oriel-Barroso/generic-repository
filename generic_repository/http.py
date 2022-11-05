@@ -1,17 +1,18 @@
+"""
+HTTP repository implementation.
+
+This module implements a subclass of the `generic_repository.repository.Repository`
+class with http actions.
+"""
 import cgi
 from http import HTTPStatus
 from typing import Any, Dict, List, Optional, cast
 
-import httpx
+import httpx  # pylint: disable=import-error
 
-try:
-    from functools import cached_property  # type: ignore
-except ImportError:  # pragma nocover
-    from cached_property import cached_property  # type: ignore
-
-from .base import Repository
 from .exceptions import InvalidPayloadException, ItemNotFoundException
 from .mapper import LambdaMapper, Mapper
+from .repository import Repository
 
 
 class HttpRepository(Repository[str, Any, Any, Any, Any]):
@@ -50,14 +51,22 @@ class HttpRepository(Repository[str, Any, Any, Any, Any]):
         self.list_mapper = list_mapper or LambdaMapper(lambda x: cast(List[Any], x))
         self.add_slash = add_slash
 
-    @cached_property
+    @property
     def base_url(self):
+        """Return the base URL of the resource.
+
+        You can override this to customize the behavior.
+        """
         if self._base_url is not None:  # pragma: nocover
             return self._base_url
         return ""
 
-    @cached_property
+    @property
     def request_params(self):
+        """Return additional request parameters.
+
+        This is the easyest way to customize the request headers and query parameters.
+        """
         params = {}
 
         if self._request_params is not None:  # pragma nocover
@@ -65,7 +74,15 @@ class HttpRepository(Repository[str, Any, Any, Any, Any]):
 
         return params
 
-    async def process_response(self, response: httpx.Response):
+    async def process_response(self, response: httpx.Response) -> Any:
+        """Processes the response coming from the HTTP server.
+
+        Args:
+            response: The response result.
+
+        Returns:
+            Any: The response raw data.
+        """
         self._ensure_success(response)
 
         if response.status_code == HTTPStatus.NO_CONTENT:
@@ -100,23 +117,33 @@ class HttpRepository(Repository[str, Any, Any, Any, Any]):
                 raise
 
     @classmethod
-    def is_json(cls, response: httpx.Response):
-        content_type, options = cgi.parse_header(response.headers.get("content-type"))
-        main_type, sub_type = content_type.split("/")
+    def is_json(cls, response: httpx.Response) -> bool:
+        """Checks if the response contains JSON data.
+
+        Args:
+            response: The response to be checked.
+
+        Returns:
+            bool: `True` if the response is a JSON document, false otherwise.
+        """
+        content_type, _ = cgi.parse_header(response.headers.get("content-type"))
+        _main_type, sub_type = content_type.split("/")
         is_json = sub_type.startswith("json")
         return is_json
 
-    async def get_by_id(self, id: str, **kwargs: Any) -> Any:
+    async def get_by_id(self, item_id: str, **kwargs: Any) -> Any:
         """Return a resource by it's ID.
 
         Args:
-            id: The ID of the resource to retrieve.
+            item_id: The ID of the resource to retrieve.
 
         Returns:
             Any: The resource as Json.
         """
         return await self.process_response(
-            await self.client.get(self.get_id_url(id), **self.merge_params(kwargs))
+            await self.client.get(
+                self.get_id_url(item_id), **self._merge_params(kwargs)
+            )
         )
 
     async def _get_list(self, *, offset=None, size=None, **query_filters):
@@ -126,12 +153,12 @@ class HttpRepository(Repository[str, Any, Any, Any, Any]):
         if offset is not None:
             params.update(offset=offset)
 
-        request_params = self.merge_params(query_filters, params)
+        request_params = self._merge_params(query_filters, params)
         return await self.process_response(
             await self.client.get(self.list_url, **request_params)
         )
 
-    def merge_params(
+    def _merge_params(
         self, query_filters: Dict[str, Any], params: Optional[Dict[str, Any]] = None
     ):
         if params is None:
@@ -223,15 +250,15 @@ class HttpRepository(Repository[str, Any, Any, Any, Any]):
 
         return await self.process_response(
             await self.client.post(
-                self.list_url, json=payload, **self.merge_params(kwargs, extra_data)
+                self.list_url, json=payload, **self._merge_params(kwargs, extra_data)
             )
         )
 
-    async def update(self, id: str, payload: Any, **kwargs: Any) -> Any:
+    async def update(self, item_id: str, payload: Any, **kwargs: Any) -> Any:
         """Update the remote resource.
 
         Args:
-            id: The resource ID.
+            item_id: The resource ID.
             payload: The payload to send. Must be json-compatible.
 
         Returns:
@@ -239,33 +266,43 @@ class HttpRepository(Repository[str, Any, Any, Any, Any]):
         """
         return await self.process_response(
             await self.client.patch(
-                self.get_id_url(id), json=payload, **self.merge_params(kwargs)
+                self.get_id_url(item_id), json=payload, **self._merge_params(kwargs)
             )
         )
 
-    def get_id_url(self, id):
-        return f"{self.base_url}/{id}"
+    def get_id_url(self, item_id):
+        """Returns the URL for an item id.
 
-    async def replace(self, id: str, payload: Any, **kwargs: Any):
+        Args:
+            item_id: The item ID to get URL for.
+
+        Returns:
+            str: The URL of the item ID.
+        """
+        return f"{self.base_url}/{item_id}"
+
+    async def replace(self, item_id: str, payload: Any, **kwargs: Any):
         """Send a replace request.
 
         Args:
-            id (str): The resource ID to replace.
+            item_id: The resource ID to replace.
             payload (Any): The new data for the resource.
 
         Returns:
             Any: The newly updated resource.
         """
         return await self.process_response(
-            await self.client.put(self.get_id_url(id), json=payload)
+            await self.client.put(self.get_id_url(item_id), json=payload)
         )
 
-    async def remove(self, id: str, **kwargs: Any):
+    async def remove(self, item_id: str, **kwargs: Any):
         """Remove the specified remote resource.
 
         Args:
-            id: The resource ID to remove.
+            item_id: The resource ID to remove.
         """
         await self.process_response(
-            await self.client.delete(self.get_id_url(id), **self.merge_params(kwargs))
+            await self.client.delete(
+                self.get_id_url(item_id), **self._merge_params(kwargs)
+            )
         )
