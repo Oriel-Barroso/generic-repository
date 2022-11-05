@@ -1,21 +1,18 @@
 import abc
 from typing import Any, Generic, List, Optional, TypeVar
 
-_Create = TypeVar("_Create")
-_Update = TypeVar("_Update")
-_Replace = TypeVar("_Replace")
-_Item = TypeVar("_Item")
+_A = TypeVar("_A")
+_U = TypeVar("_U")
+_R = TypeVar("_R")
+_I = TypeVar("_I")
 _Id = TypeVar("_Id")
 
 
-class GenericBaseRepository(
-    Generic[_Id, _Create, _Update, _Replace, _Item],
-    abc.ABC,
-):  # pragma nocover
+class Repository(Generic[_Id, _A, _U, _R, _I], abc.ABC):  # pragma nocover
     """Base class for all CRUD implementations."""
 
     @abc.abstractmethod
-    async def get_by_id(self, id: _Id, **kwargs: Any) -> _Item:
+    async def get_by_id(self, id: _Id, **kwargs: Any) -> _I:
         """Retrieve an item by it's ID.
 
         Args:
@@ -44,7 +41,7 @@ class GenericBaseRepository(
         offset: Optional[int] = None,
         size: Optional[int] = None,
         **query_filters: Any
-    ) -> List[_Item]:
+    ) -> List[_I]:
         """Retrieve a list of items.
 
         Args:
@@ -57,7 +54,7 @@ class GenericBaseRepository(
         raise NotImplementedError()
 
     @abc.abstractmethod
-    async def add(self, payload: _Create, **kwargs: Any) -> _Item:
+    async def add(self, payload: _A, **kwargs: Any) -> _I:
         """Add a new item.
 
         Args:
@@ -84,7 +81,7 @@ class GenericBaseRepository(
         raise NotImplementedError()
 
     @abc.abstractmethod
-    async def update(self, id: _Id, payload: _Update, **kwargs: Any) -> _Item:
+    async def update(self, id: _Id, payload: _U, **kwargs: Any) -> _I:
         """Update an item.
 
         Args:
@@ -100,7 +97,7 @@ class GenericBaseRepository(
         raise NotImplementedError()
 
     @abc.abstractmethod
-    async def replace(self, id: _Id, payload: _Replace, **kwargs: Any) -> _Item:
+    async def replace(self, id: _Id, payload: _R, **kwargs: Any) -> _I:
         """Replace an item in the store.
 
         Args:

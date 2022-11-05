@@ -9,12 +9,12 @@ try:
 except ImportError:  # pragma nocover
     from cached_property import cached_property  # type: ignore
 
-from .base import GenericBaseRepository
+from .base import Repository
 from .exceptions import InvalidPayloadException, ItemNotFoundException
 from .mapper import LambdaMapper, Mapper
 
 
-class HttpRepository(GenericBaseRepository[str, Any, Any, Any, Any]):
+class HttpRepository(Repository[str, Any, Any, Any, Any]):
     """An http repository.
 
     To use it, you must provide an httpx async client.

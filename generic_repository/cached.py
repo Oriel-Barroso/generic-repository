@@ -21,7 +21,7 @@ from typing import (
 
 from typing_extensions import ParamSpec
 
-from .base import GenericBaseRepository, _Create, _Id, _Item, _Replace, _Update
+from .base import _A, _I, _R, _U, Repository, _Id
 
 _Params = ParamSpec("_Params")
 _FuncOut = TypeVar("_FuncOut")
@@ -42,8 +42,8 @@ def _task(
 
 
 class CacheRepository(
-    GenericBaseRepository[_Id, _Create, _Update, _Replace, _Item],
-    Generic[_Id, _Create, _Update, _Replace, _Item],
+    Repository[_Id, _A, _U, _R, _I],
+    Generic[_Id, _A, _U, _R, _I],
 ):
     """A cached repository implementation.
 
@@ -54,9 +54,7 @@ class CacheRepository(
     Note that modify operations are not cached and clear the caches.
     """
 
-    def __init__(
-        self, repository: GenericBaseRepository[_Id, _Create, _Update, _Replace, _Item]
-    ) -> None:
+    def __init__(self, repository: Repository[_Id, _A, _U, _R, _I]) -> None:
         super().__init__()
         self.repository = repository
 
@@ -65,7 +63,7 @@ class CacheRepository(
         self.get_count.cache_clear()
         self.get_by_id.cache_clear()
 
-    async def add(self, payload: _Create, **kwargs: Any) -> _Item:
+    async def add(self, payload: _A, **kwargs: Any) -> _I:
         return await self.repository.add(payload)
 
     @cache
@@ -76,7 +74,7 @@ class CacheRepository(
         offset: Optional[int] = None,
         size: Optional[int] = None,
         **query_filters: Any
-    ) -> List[_Item]:
+    ) -> List[_I]:
         return await self.repository.get_list(offset=offset, size=size, **query_filters)
 
     @cache
@@ -86,15 +84,15 @@ class CacheRepository(
 
     @cache
     @_task
-    async def get_by_id(self, id: _Id) -> _Item:
+    async def get_by_id(self, id: _Id) -> _I:
         return await self.repository.get_by_id(id)
 
-    async def update(self, id: _Id, payload: _Update, **kwargs: Any) -> _Item:
+    async def update(self, id: _Id, payload: _U, **kwargs: Any) -> _I:
         result = await self.repository.update(id, payload, **kwargs)
         self.clear_cache()
         return result
 
-    async def replace(self, id: _Id, payload: _Replace, **kwargs: Any) -> _Item:
+    async def replace(self, id: _Id, payload: _R, **kwargs: Any) -> _I:
         result = await self.repository.replace(id, payload, **kwargs)
         self.clear_cache()
         await self.get_by_id(id)

@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.decl_api import DeclarativeMeta
 from sqlalchemy.sql.selectable import Select
 
-from .base import GenericBaseRepository, _Create, _Id, _Item, _Replace, _Update
+from .base import _A, _I, _R, _U, Repository, _Id
 from .exceptions import ItemNotFoundException
 from .mapper import Mapper
 
@@ -26,8 +26,8 @@ _Model = TypeVar("_Model")
 
 
 class DatabaseRepository(
-    Generic[_Model, _Create, _Update, _Replace, _Item, _Id],
-    GenericBaseRepository[_Id, _Create, _Update, _Replace, _Item],
+    Generic[_Model, _A, _U, _R, _I, _Id],
+    Repository[_Id, _A, _U, _R, _I],
     abc.ABC,
 ):
     """Base SQLAlchemy-based cruds.
@@ -46,10 +46,10 @@ class DatabaseRepository(
     def __init__(
         self,
         session: AsyncSession,
-        item_mapper: Mapper[_Model, _Item],
-        create_mapper: Mapper[_Create, _Model],
-        update_mapper: Mapper[_Update, Dict[str, Any]],
-        replace_mapper: Mapper[_Replace, Dict[str, Any]],
+        item_mapper: Mapper[_Model, _I],
+        create_mapper: Mapper[_A, _Model],
+        update_mapper: Mapper[_U, Dict[str, Any]],
+        replace_mapper: Mapper[_R, Dict[str, Any]],
     ) -> None:
         """Initialize this crud instance.
 
@@ -170,13 +170,13 @@ class DatabaseRepository(
 
         return query
 
-    def map_item(self, session: Session, item: _Model) -> _Item:
+    def map_item(self, session: Session, item: _Model) -> _I:
         return self.item_mapper.map_item(item)
 
-    def map_items(self, session: Session, items: Iterable[_Model]) -> List[_Item]:
+    def map_items(self, session: Session, items: Iterable[_Model]) -> List[_I]:
         return [self.map_item(session, item) for item in items]
 
-    async def get_by_id(self, id: _Id, **kwargs: Any) -> _Item:
+    async def get_by_id(self, id: _Id, **kwargs: Any) -> _I:
         return await self.session.run_sync(
             self.map_item, await self.get_unmapped_by_id(id, **kwargs)
         )
@@ -194,14 +194,14 @@ class DatabaseRepository(
         offset: Optional[int] = None,
         size: Optional[int] = None,
         **query_filters: Any,
-    ) -> List[_Item]:
+    ) -> List[_I]:
         query = self._get_list_query(offset, size, **query_filters)
 
         return await self.session.run_sync(
             self.map_items, await self.session.scalars(query)
         )
 
-    async def add(self, payload: _Create, **kwargs: Any) -> _Item:
+    async def add(self, payload: _A, **kwargs: Any) -> _I:
         model = self.create_mapper(payload)
         if not isinstance(model, self.get_db_model()):  # pragma: nocover
             raise AssertionError(
@@ -224,7 +224,7 @@ class DatabaseRepository(
         async with self.session.begin_nested():
             await self.session.delete(model)
 
-    async def _update(self, id: _Id, payload: Dict[str, Any], **kwargs: Any) -> _Item:
+    async def _update(self, id: _Id, payload: Dict[str, Any], **kwargs: Any) -> _I:
         model = await self.get_unmapped_by_id(id, **kwargs)
 
         async with self.session.begin_nested():
@@ -236,10 +236,10 @@ class DatabaseRepository(
         for attr, value in payload.items():
             setattr(model, attr, value)
 
-    async def update(self, id: _Id, payload: _Update, **kwargs: Any) -> _Item:
+    async def update(self, id: _Id, payload: _U, **kwargs: Any) -> _I:
         return await self._update(
             id, self.update_mapper(payload, exclude_unset=True), **kwargs
         )
 
-    async def replace(self, id: _Id, payload: _Replace, **kwargs: Any):
+    async def replace(self, id: _Id, payload: _R, **kwargs: Any):
         return await self._update(id, self.replace_mapper(payload), **kwargs)
