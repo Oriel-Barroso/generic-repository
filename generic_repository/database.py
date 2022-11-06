@@ -161,7 +161,9 @@ class DatabaseRepository(
             ItemNotFoundException: If the item does not exist.
         """
         result = await self.session.scalar(
-            self.get_count_query(**kwargs).where(self.get_id_field() == item_id)
+            self.decorate_query(self.get_base_query(), **kwargs).where(
+                self.get_id_field() == item_id
+            )
         )
 
         if result is None:
@@ -173,10 +175,8 @@ class DatabaseRepository(
         """Builds a query for counting."""
         return self.decorate_query(
             query=select(
-                func.count(
-                    self.get_db_model(),
-                ),
-            ),
+                func.count(),
+            ).select_from(self.get_db_model()),
             **query_filters,
         )
 
