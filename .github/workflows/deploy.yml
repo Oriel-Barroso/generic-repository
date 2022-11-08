@@ -16,7 +16,7 @@ jobs:
           python-version: 3.11.0
           cache: "poetry"
 
-      - run: pipx install poetry
+      - run: pip install poetry
         name: Install poetry
       - run: poetry config pypi-token.pypi ${{ secrets.PYPI_TOKEN }}
         name: Login to PyPI
