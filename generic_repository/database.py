@@ -277,9 +277,7 @@ class DatabaseRepository(
             setattr(model, attr, value)
 
     async def update(self, item_id: _Id, payload: _U, **kwargs: Any) -> _I:
-        return await self._update(
-            item_id, self.update_mapper(payload, exclude_unset=True), **kwargs
-        )
+        return await self._update(item_id, self.update_mapper(payload), **kwargs)
 
     async def replace(self, item_id: _Id, payload: _R, **kwargs: Any):
         return await self._update(item_id, self.replace_mapper(payload), **kwargs)

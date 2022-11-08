@@ -1,3 +1,8 @@
+"""
+Data mappers.
+
+These constructs are used to apply data transformations in various places.
+"""
 import abc
 from dataclasses import dataclass, field
 from typing import (
@@ -6,7 +11,6 @@ from typing import (
     Dict,
     Generic,
     List,
-    Mapping,
     NamedTuple,
     Optional,
     Sequence,
@@ -47,7 +51,7 @@ class Mapper(Generic[_In, _Out], abc.ABC):
     NotImplementedError: ...
     """
 
-    def __call__(self, input: _In, **kwds: Any) -> _Out:
+    def __call__(self, value: _In) -> _Out:
         """Process the input argument.
 
         Args:
@@ -56,10 +60,10 @@ class Mapper(Generic[_In, _Out], abc.ABC):
         Returns:
             _Out: The resulting object.
         """
-        return self.map_item(input, **kwds)
+        return self.map_item(value)
 
     @abc.abstractmethod
-    def map_item(self, item: _In, **kwargs: Any) -> _Out:
+    def map_item(self, item: _In) -> _Out:
         """Maps an item to it's output representation.
 
         Args:
@@ -69,7 +73,7 @@ class Mapper(Generic[_In, _Out], abc.ABC):
             _Out: The output representation.
         """
 
-    def reverse_map(self, out: _Out, **kwargs: Any) -> _In:
+    def reverse_map(self, out: _Out) -> _In:
         """Reverse the mapping process.
 
         Args:
@@ -81,19 +85,13 @@ class Mapper(Generic[_In, _Out], abc.ABC):
         raise NotImplementedError("Not implemented.")
 
     def chain(
-        self,
-        mapper: Union[
-            Callable[[_Out], _New],
-            Type["Mapper[_Out, _New]"],
-        ],
-        *mapper_args: Any,
-        **mapper_kwargs: Any
+        self, mapper: "Union[Mapper[_Out, _New], Callable[[_Out], _New]]"
     ) -> "Mapper[_In,_New]":
         """Chain another mapper to this.
 
         >>> mapper=(
         ...     LambdaMapper(lambda x: x*2, lambda x: x/2)
-        ...     .chain(LambdaMapper, lambda x: x*2, lambda x: x/2)
+        ...     .chain(LambdaMapper(lambda x: x*2, lambda x: x/2))
         ... )
         >>> mapper(3)
         12
@@ -108,7 +106,7 @@ class Mapper(Generic[_In, _Out], abc.ABC):
         3.0
 
         A plain callable gets wrapped in a lambda mapper:
-        >>> mapper3 = mapper2.chain(lambda x: x*2, reverse_func=lambda: x/2)
+        >>> mapper3 = mapper2.chain(lambda x: x*2)
         >>> mapper3(3)
         48
 
@@ -119,24 +117,13 @@ class Mapper(Generic[_In, _Out], abc.ABC):
         TypeError: ...
         >>>
         """
+        mapper_instance = None
         if callable(mapper):
             if isinstance(mapper, Mapper):
                 mapper_instance = mapper
             else:
-                if isinstance(mapper, type):
-                    mapper_instance = mapper(
-                        *mapper_args,
-                        **mapper_kwargs,
-                    )  # type: ignore
-                else:
-                    # Assume that this is a plain mapper function.
-                    reverse_func = mapper_kwargs.pop("reverse_func", None)
-                    mapper_instance = LambdaMapper(
-                        mapper,
-                        reverse_func,
-                        *mapper_args,
-                        **mapper_kwargs,
-                    )
+                mapper_instance = LambdaMapper[_Out, _New](mapper)
+
         else:
             raise TypeError(
                 "Invalid value for the `mapper` parameter. Must be a mapper factory or"
@@ -190,6 +177,7 @@ class Mapper(Generic[_In, _Out], abc.ABC):
 
     @staticmethod
     def identity():  # pragma nocover
+        """The identity mapper."""
         return LambdaMapper(lambda x: x, lambda x: x)
 
 
@@ -217,42 +205,24 @@ class LambdaMapper(Mapper[_In, _Out]):
     >>> mapper3 = LambdaMapper(
     ...     lambda x, *, n: x*n,
     ...     lambda x, *, n: x/n,
+    ...     mapper_kwargs={'n':5},
     ... )
-    >>> mapper3(4, n=5)
-    20
-    >>> mapper3.reverse_map(20, n=5)
-    4.0
     >>> mapper3(4)
-    Traceback (most recent call last):
-      ...
-    TypeError: ...
-
-    With a pre-populated `n` argument:
-    >>> mapper4 = LambdaMapper(
-    ...     mapper3.func, mapper3.reverse_func,
-    ...     mapper_kwargs={'n': 5}
-    ... )
-    >>> mapper4(4)
     20
+    >>> mapper3.reverse_map(20)
+    4.0
     """
 
     func: Callable[[_In], _Out]
     reverse_func: Optional[Callable[[_Out], _In]] = None
-    mapper_kwargs: Mapping[str, Any] = field(default_factory=dict)
+    mapper_kwargs: Dict[str, Any] = field(default_factory=dict, kw_only=True)
 
-    def map_item(self, item: _In, **kwargs: Any) -> _Out:
-        return self.func(item, **self._merge_kwargs(kwargs))
+    def map_item(self, item: _In) -> _Out:
+        return self.func(item, **self.mapper_kwargs)
 
-    def _merge_kwargs(self, kwargs: Mapping[str, Any]) -> Mapping[str, Any]:
-        extra_kwargs = {**self.mapper_kwargs}
-
-        extra_kwargs.update(kwargs)
-
-        return extra_kwargs
-
-    def reverse_map(self, out: _Out, **kwargs: Any) -> _In:
+    def reverse_map(self, out: _Out) -> _In:
         if self.reverse_func is not None:
-            return self.reverse_func(out, **self._merge_kwargs(kwargs))
+            return self.reverse_func(out, **self.mapper_kwargs)
         return super().reverse_map(out)
 
 
@@ -264,6 +234,7 @@ class _Arguments(NamedTuple):
     kwargs: Dict[str, Any]
 
 
+@dataclass(frozen=True)
 class ToFunctionArgsMapper(Mapper[Union[Dict[str, Any], Sequence], _Arguments]):
     """Maps a dict to kwargs part of a function call.
 
@@ -278,10 +249,6 @@ class ToFunctionArgsMapper(Mapper[Union[Dict[str, Any], Sequence], _Arguments]):
     _Arguments(args=(3,), kwargs={})
     >>> mapper((3,))
     _Arguments(args=(3,), kwargs={})
-    >>> args, kwargs = mapper((3,), x=2)
-
-    >>> kwargs['x']
-    2
     >>> mapper('x')
     Traceback (most recent call last):
       ...
@@ -289,10 +256,12 @@ class ToFunctionArgsMapper(Mapper[Union[Dict[str, Any], Sequence], _Arguments]):
     >>>
     """
 
-    def map_item(self, item, **default_kwargs):
+    default_kwargs: Dict[str, Any] = field(default_factory=dict)
+
+    def map_item(self, item):
         args: List[Any] = []
         kwargs: Dict[str, Any] = {}
-        kwargs.update(default_kwargs)
+        kwargs.update(self.default_kwargs)
         if isinstance(item, dict):
             kwargs.update(item)
         elif isinstance(item, (tuple, list, set)):
@@ -301,6 +270,11 @@ class ToFunctionArgsMapper(Mapper[Union[Dict[str, Any], Sequence], _Arguments]):
             raise TypeError("Type not supported.")
 
         return _Arguments(tuple(args), kwargs)
+
+    def reverse_map(self, out: _Arguments) -> Union[tuple, Dict[str, Any]]:
+        if len(out.args) > 0:
+            return out.args
+        return out.kwargs
 
 
 class ConstructorMapper(Mapper[_Arguments, _Obj], Generic[_Obj]):
@@ -330,15 +304,17 @@ class ConstructorMapper(Mapper[_Arguments, _Obj], Generic[_Obj]):
     AssertionError: ...
     """
 
-    def __init__(self, cls: Type[_Obj]) -> None:
+    def __init__(self, cls: Type[_Obj], **default_kwargs: Any) -> None:
         super().__init__()
         if not isinstance(cls, type):
             raise AssertionError("The provided object is not a valid class.")
         self.cls = cls
+        self._default_kw = default_kwargs
 
-    def map_item(self, item: _Arguments, **kwargs: Any) -> _Obj:
-        args, kw = item
-        return self.cls(*args, **kw)  # type: ignore
+    def map_item(self, item: _Arguments) -> _Obj:
+        args, kwargs = item
+        kwargs = {**self._default_kw, **kwargs}
+        return self.cls(*args, **kwargs)  # type: ignore
 
 
 _Intermediate = TypeVar("_Intermediate")
@@ -382,11 +358,11 @@ class DecoratedMapper(Mapper[_In, _Out]):
 
         self.first, self.second = first, second
 
-    def map_item(self, item: _In, **kwargs: Any) -> _Out:
-        return self.second.map_item(self.first.map_item(item, **kwargs), **kwargs)
+    def map_item(self, item: _In) -> _Out:
+        return self.second.map_item(self.first.map_item(item))
 
-    def reverse_map(self, out: _Out, **kwargs: Any) -> _In:
-        return self.first.reverse_map(self.second.reverse_map(out, **kwargs), **kwargs)
+    def reverse_map(self, out: _Out) -> _In:
+        return self.first.reverse_map(self.second.reverse_map(out))
 
 
 class InverseMapper(Mapper[_Out, _In], Generic[_In, _Out]):
@@ -402,8 +378,8 @@ class InverseMapper(Mapper[_Out, _In], Generic[_In, _Out]):
         super().__init__()
         self.mapper = mapper
 
-    def map_item(self, item: _Out, **kwargs: Any) -> _In:
-        return self.mapper.reverse_map(item, **kwargs)
+    def map_item(self, item: _Out) -> _In:
+        return self.mapper.reverse_map(item)
 
-    def reverse_map(self, out: _In, **kwargs: Any) -> _Out:
-        return self.mapper.map_item(out, **kwargs)
+    def reverse_map(self, out: _In) -> _Out:
+        return self.mapper.map_item(out)
