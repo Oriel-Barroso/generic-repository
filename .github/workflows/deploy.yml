@@ -27,4 +27,4 @@ jobs:
       - run: poetry version $(dunamai from git --style pep440)
       - run: poetry build
       - run: poetry publish
-        if: ${{ startsWith(github.ref, "/refs/tags") }}
+        if: ${{ startsWith(github.ref, "refs/tags") }}
