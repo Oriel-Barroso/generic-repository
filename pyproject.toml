@@ -7,14 +7,14 @@ packages = [
   {include = "generic_repository/py.typed"},
 ]
 readme = "README.md"
-version = "1.2.1"
+version = "0.0.0"
 
 [tool.poetry.dependencies]
 SQLAlchemy = {version = "^1.4.0", optional = true}
 cached-property = {version = "^1.5.2", python = "<3.8"}
 httpx = {version = "^0.23.0", optional = true}
 pydantic = {version = "^1.9.0", optional = true}
-python = "^3.7"
+python = "^3.8"
 typing-extensions = {version = "^4.2.0", python = "<3.10"}
 
 [tool.poetry.dev-dependencies]
@@ -40,6 +40,9 @@ pytest-sugar = "^0.9.4"
 http = ["httpx"]
 pydantic = ["pydantic"]
 sqlalchemy = ["SQLAlchemy"]
+
+[tool.poetry.group.dev.dependencies]
+pylint = "^2.15.5"
 
 [build-system]
 build-backend = "poetry.core.masonry.api"

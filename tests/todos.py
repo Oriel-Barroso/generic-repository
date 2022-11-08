@@ -2,7 +2,7 @@ from typing import Optional
 
 import pydantic
 
-from generic_repository import GenericBaseRepository
+from generic_repository import Repository
 
 
 class BaseTodo(pydantic.BaseModel):
@@ -25,6 +25,6 @@ class Todo(AddTodoPayload):
 
 
 class TodoRepository(
-    GenericBaseRepository[int, AddTodoPayload, UpdateTodoPayload, AddTodoPayload, Todo]
+    Repository[int, AddTodoPayload, UpdateTodoPayload, AddTodoPayload, Todo]
 ):
     pass
