@@ -1,3 +1,7 @@
+# pylint: disable=import-error,redefined-outer-name,unused-argument,missing-function-docstring,import-outside-toplevel # noqa E501
+"""
+Fixtures for the library.
+"""
 import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
@@ -18,7 +22,7 @@ def anyio_backend():
 
 @pytest.fixture(scope="session")
 def init_database():
-    from .sqlalchemy.models import Base
+    from .sqlalchemy.models import Base  # pylint: disable=import-outside-toplevel
 
     return Base.metadata.create_all
 
@@ -56,7 +60,7 @@ async def db_session(
 
 @pytest.fixture()
 async def sa_cleanup(db_session: AsyncSession, anyio_backend):
-    from .sqlalchemy.models import TodoItem
+    from .sqlalchemy.models import TodoItem  # pylint: disable=import-outside-toplevel
 
     try:
         yield
@@ -103,7 +107,7 @@ def http_todos_repository(http_repository: HttpRepository, cleanup_items):
     return MappedRepository(
         http_repository,
         create_mapper=PydanticDictMapper(AddTodoPayload),
-        item_mapper=LambdaMapper(lambda x: Todo.parse_obj(x)),
+        item_mapper=LambdaMapper(Todo.parse_obj),
         update_mapper=PydanticDictMapper(UpdateTodoPayload),
         replace_mapper=PydanticDictMapper(AddTodoPayload),
         id_mapper=LambdaMapper(str, int),

@@ -219,9 +219,7 @@ class DatabaseRepository(
 
     async def get_count(self, **query_filters: Any) -> int:
         return await self.session.scalar(
-            self.decorate_query(
-                select(func.count(self.get_id_field())), **query_filters
-            )
+            self.get_count_query(**query_filters),
         )
 
     async def get_list(

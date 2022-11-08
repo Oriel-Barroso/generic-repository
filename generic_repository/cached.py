@@ -4,19 +4,7 @@ Cache repository implementation.
 """
 import asyncio
 import json
-from functools import wraps
-from typing import (
-    Any,
-    Callable,
-    Coroutine,
-    Dict,
-    Generator,
-    Generic,
-    List,
-    Optional,
-    TypeVar,
-    Union,
-)
+from typing import Any, Dict, Generic, List, Optional, TypeVar
 
 from typing_extensions import ParamSpec
 
@@ -25,20 +13,6 @@ from .repository import _A, _I, _R, _U, Repository, _Id
 _Out = TypeVar("_Out")
 _Params = ParamSpec("_Params")
 _FuncOut = TypeVar("_FuncOut")
-
-
-def _task(
-    func: Callable[
-        _Params, Union[Generator[Any, None, _FuncOut], Coroutine[Any, Any, _FuncOut]]
-    ]
-):
-    @wraps(func)
-    def decorated(
-        *args: _Params.args, **kwargs: _Params.kwargs
-    ) -> asyncio.Task[_FuncOut]:
-        return asyncio.create_task(func(*args, **kwargs))
-
-    return decorated
 
 
 class CacheRepository(
@@ -85,7 +59,7 @@ class CacheRepository(
 
         return await data
 
-    def _get_or_cache(self, method, prefix, *args, wrapper=lambda x: x, **kwargs):
+    def _get_or_cache(self, method, prefix, *args, wrapper, **kwargs):
         cache_key = self._gen_cache_key(prefix, *args, **kwargs)
         data = self._cache.get(cache_key)
         if data is None:
@@ -96,10 +70,6 @@ class CacheRepository(
     def _gen_cache_key(self, prefix: str, *args: Any, **kwargs: Any) -> str:
         body = json.dumps({**kwargs, "__args": args})
         return f"{prefix}:{body}"
-
-    def _call_repository(self, method: str, *args: Any, **kwargs: Any):
-
-        return getattr(self.repository, method)(*args, **kwargs)
 
     async def get_count(self, **query_filters: Any) -> int:
         return await self._get_or_cache(
