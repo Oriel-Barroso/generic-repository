@@ -1,6 +1,9 @@
 # pylint: disable=import-error,redefined-outer-name,unused-argument,missing-function-docstring,import-outside-toplevel # noqa E501
+# type: ignore
 """
 Fixtures for the library.
+
+This module contains fixtures for the test suite.
 """
 import pytest
 from fastapi import FastAPI
@@ -76,6 +79,13 @@ def sa_repository(db_session: AsyncSession, sa_cleanup):
     return DbTodoRepository(db_session)
 
 
+@pytest.fixture()
+def mapped_sa_repository(db_session: AsyncSession, sa_cleanup):
+    from .sqlalchemy.todos import DbMappedTodoRepository
+
+    return DbMappedTodoRepository(db_session)
+
+
 @pytest.fixture(scope="session")
 def app():
     from .http.app import get_app
@@ -119,6 +129,13 @@ def cached_repository(http_todos_repository: TodoRepository):
     return CacheRepository(http_todos_repository)
 
 
-@pytest.fixture(params=("sa_repository", "http_todos_repository", "cached_repository"))
+@pytest.fixture(
+    params=(
+        "sa_repository",
+        "http_todos_repository",
+        "cached_repository",
+        "mapped_sa_repository",
+    )
+)
 def repository(request):
     return request.getfixturevalue(request.param)
