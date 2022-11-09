@@ -43,6 +43,7 @@ sqlalchemy = ["SQLAlchemy"]
 
 [tool.poetry.group.dev.dependencies]
 pylint = "^2.15.5"
+ipykernel = "^6.17.0"
 
 [build-system]
 build-backend = "poetry.core.masonry.api"

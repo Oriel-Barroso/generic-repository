@@ -176,9 +176,9 @@ class Mapper(Generic[_In, _Out], abc.ABC):
         return self.chain(other)  # type: ignore
 
     @staticmethod
-    def identity():  # pragma nocover
+    def identity() -> "Mapper[_In, _In]":  # pragma nocover
         """The identity mapper."""
-        return LambdaMapper(lambda x: x, lambda x: x)
+        return LambdaMapper[_In, _In](lambda x: x, lambda x: x)
 
 
 @dataclass(frozen=True)
@@ -272,6 +272,21 @@ class ToFunctionArgsMapper(Mapper[Union[Dict[str, Any], Sequence], _Arguments]):
         return _Arguments(tuple(args), kwargs)
 
     def reverse_map(self, out: _Arguments) -> Union[tuple, Dict[str, Any]]:
+        """Perform the reverse map of the arguments.
+
+        Args:
+            out (_Arguments): The arguments to be reversed
+
+        Returns:
+            Union[tuple, Dict[str, Any]]: The resulting arguments.
+
+        >>> mapper= ~ToFunctionArgsMapper()
+        >>> mapper(_Arguments((5, 3), {}))
+        (5, 3)
+
+        >>> mapper(_Arguments((), {'x': 3}))
+        {'x': 3}
+        """
         if len(out.args) > 0:
             return out.args
         return out.kwargs

@@ -40,7 +40,6 @@ async def test_list_with_size(items: List[Todo], repository: TodoRepository):
     assert len(result) == 10  # nosec
 
 
-@pytest.mark.xfail()
 async def test_list_with_offset(items: List[Todo], repository: TodoRepository):
     result = await repository.get_list(offset=10)
 
