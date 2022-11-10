@@ -26,11 +26,19 @@ __all__ = [
 ]
 
 try:
-    from .database import DatabaseRepository, SqlalchemyMappedRepository
+    from .database import (
+        DatabaseRepository,
+        SqlalchemyMappedRepository,
+        SqlalchemyModelRepository,
+    )
 except ImportError:  # pragma nocover
     pass
 else:
-    __all__ += ["DatabaseRepository", "SqlalchemyMappedRepository"]
+    __all__ += [
+        "DatabaseRepository",
+        "SqlalchemyMappedRepository",
+        "SqlalchemyModelRepository",
+    ]
 
 try:
     from .http import HttpRepository
