@@ -6,6 +6,7 @@ from .exceptions import CrudException, InvalidPayloadException, ItemNotFoundExce
 from .mapper import ConstructorMapper, LambdaMapper, Mapper, ToFunctionArgsMapper
 from .repository import Repository
 
+GenericBaseRepository = Repository
 __all__ = [
     # Base classes
     "Repository",
