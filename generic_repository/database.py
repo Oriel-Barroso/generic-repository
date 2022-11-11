@@ -890,6 +890,7 @@ class SqlalchemyMappedRepository(
             replace_mapper=replace_mapper,
             item_mapper=item_mapper,
         )
+        self.session = session
 
     def decorate_query(  # pylint: disable=unused-argument
         self,
@@ -905,3 +906,12 @@ class SqlalchemyMappedRepository(
             Select: The new, decorated query
         """
         return query
+
+    async def map_item(self, item: _Model) -> _I:
+        return await self.session.run_sync(lambda s, i: self.item_mapper(i), item)
+
+    async def map_item_list(self, item_list: List[_Model]) -> List[_I]:
+        return await self.session.run_sync(
+            lambda s, l: [self.item_mapper(i) for i in l],
+            item_list,
+        )

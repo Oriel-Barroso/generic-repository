@@ -78,7 +78,7 @@ class MappedRepository(
         Returns:
             _MI: The newly created item
         """
-        return self.item_mapper(
+        return await self.map_item(
             await self.repository.add(self.create_mapper(payload), **kwargs)
         )
 
@@ -92,7 +92,7 @@ class MappedRepository(
         Returns:
             _MI: The updated item
         """
-        return self.item_mapper(
+        return await self.map_item(
             await self.repository.update(
                 self.id_mapper(item_id), self.update_mapper(payload), **kwargs
             )
@@ -107,7 +107,7 @@ class MappedRepository(
         Returns:
             _MI: The item
         """
-        return self.item_mapper(
+        return await self.map_item(
             await self.repository.get_by_id(self.id_mapper(item_id), **kwargs)
         )
 
@@ -121,7 +121,7 @@ class MappedRepository(
         Returns:
             _MI: The new item
         """
-        return self.item_mapper(
+        return await self.map_item(
             await self.repository.replace(
                 self.id_mapper(item_id), self.replace_mapper(payload), **kwargs
             )
@@ -165,3 +165,25 @@ class MappedRepository(
             item_id (_MId): The item ID to be removed.
         """
         await self.repository.remove(self.id_mapper(item_id), **kwargs)
+
+    async def map_item(self, item: _I) -> _MI:
+        """Transform an item.
+
+        Args:
+            item (_I): The original item
+
+        Returns:
+            _MI: The transformed item
+        """
+        return self.item_mapper(item)
+
+    async def map_item_list(self, item_list: List[_I]) -> List[_MI]:
+        """Map an item list to the correct representation.
+
+        Args:
+            item_list (List[_I]): The original item list
+
+        Returns:
+            List[_MI]: The mapped item list
+        """
+        return [self.item_mapper(item) for item in item_list]
