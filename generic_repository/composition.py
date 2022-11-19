@@ -151,12 +151,13 @@ class MappedRepository(
         Returns:
             List[_MI]: A list of items
         """
-        return [
-            self.item_mapper(item)
-            for item in await self.repository.get_list(
-                offset=offset, size=size, **query_filters
+        return await self.map_item_list(
+            await self.repository.get_list(
+                offset=offset,
+                size=size,
+                **query_filters,
             )
-        ]
+        )
 
     async def remove(self, item_id: _MId, **kwargs: Any):
         """Remove an item from the underlying repository.
