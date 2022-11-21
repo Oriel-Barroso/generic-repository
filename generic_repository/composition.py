@@ -50,6 +50,7 @@ class MappedRepository(
         update_mapper: Mapper[_MU, _U],
         replace_mapper: Mapper[_MR, _R],
         item_mapper: Mapper[_I, _MI],
+        **query_filters: Any,
     ) -> None:
         """Initialize the `MappedRepository` instance.
 
@@ -68,6 +69,7 @@ class MappedRepository(
         self.create_mapper = create_mapper
         self.update_mapper = update_mapper
         self.replace_mapper = replace_mapper
+        self._filters = query_filters
 
     async def add(self, payload: _MA, **kwargs: Any) -> _MI:
         """Add a new item.
@@ -94,7 +96,10 @@ class MappedRepository(
         """
         return await self.map_item(
             await self.repository.update(
-                self.id_mapper(item_id), self.update_mapper(payload), **kwargs
+                self.id_mapper(item_id),
+                self.update_mapper(payload),
+                **kwargs,
+                **self._filters,
             )
         )
 
@@ -108,7 +113,9 @@ class MappedRepository(
             _MI: The item
         """
         return await self.map_item(
-            await self.repository.get_by_id(self.id_mapper(item_id), **kwargs)
+            await self.repository.get_by_id(
+                self.id_mapper(item_id), **kwargs, **self._filters
+            )
         )
 
     async def replace(self, item_id: _MId, payload: _MR, **kwargs: Any) -> _MI:
@@ -123,7 +130,10 @@ class MappedRepository(
         """
         return await self.map_item(
             await self.repository.replace(
-                self.id_mapper(item_id), self.replace_mapper(payload), **kwargs
+                self.id_mapper(item_id),
+                self.replace_mapper(payload),
+                **kwargs,
+                **self._filters,
             )
         )
 
@@ -133,7 +143,7 @@ class MappedRepository(
         Returns:
             int: The item count
         """
-        return await self.repository.get_count(**query_filters)
+        return await self.repository.get_count(**query_filters, **self._filters)
 
     async def get_list(
         self,
@@ -156,6 +166,7 @@ class MappedRepository(
                 offset=offset,
                 size=size,
                 **query_filters,
+                **self._filters,
             )
         )
 
@@ -165,7 +176,7 @@ class MappedRepository(
         Args:
             item_id (_MId): The item ID to be removed.
         """
-        await self.repository.remove(self.id_mapper(item_id), **kwargs)
+        await self.repository.remove(self.id_mapper(item_id), **kwargs, **self._filters)
 
     async def map_item(self, item: _I) -> _MI:
         """Transform an item.
