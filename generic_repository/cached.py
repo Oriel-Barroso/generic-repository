@@ -1,18 +1,24 @@
 # pylint: disable=import-error
+# mypy: ignore-errors
 """
 Cache repository implementation.
 """
 import asyncio
 import json
-from typing import Any, Dict, Generic, List, Optional, TypeVar
+from typing import Any, Callable, Dict, Generic, List, Optional, TypeVar
 
 from typing_extensions import ParamSpec
 
-from .repository import _A, _I, _R, _U, Repository, _Id
+from .repository import Repository
 
-_Out = TypeVar("_Out")
+_A = TypeVar("_A")
+_U = TypeVar("_U")
+_R = TypeVar("_R")
+_Id = TypeVar("_Id")
+_I = TypeVar("_I")
+_WRapperIn = TypeVar("_WRapperIn")
+_WrapperOut = TypeVar("_WrapperOut")
 _Params = ParamSpec("_Params")
-_FuncOut = TypeVar("_FuncOut")
 
 
 class CacheRepository(
@@ -48,22 +54,30 @@ class CacheRepository(
         size: Optional[int] = None,
         **query_filters: Any,
     ) -> List[_I]:
-        data = self._get_or_cache(
+        data: asyncio.Task[List[_I]] = self._get_or_cache(
             self.repository.get_list,
             "list",
+            asyncio.create_task,
             offset=offset,
             size=size,
             **query_filters,
-            wrapper=asyncio.create_task,
         )
 
         return await data
 
-    def _get_or_cache(self, method, prefix, *args, wrapper, **kwargs):
+    def _get_or_cache(
+        self,
+        method: Callable[_Params, _WRapperIn],
+        prefix: str,
+        wrapper: Callable[[_WRapperIn], _WrapperOut],
+        *args: _Params.args,
+        **kwargs: _Params.kwargs,
+    ) -> _WrapperOut:
         cache_key = self._gen_cache_key(prefix, *args, **kwargs)
         data = self._cache.get(cache_key)
         if data is None:
-            data = wrapper(method(*args, **kwargs))
+            original_data = method(*args, **kwargs)
+            data = wrapper(original_data)
             self._cache[cache_key] = data
         return data
 
@@ -72,21 +86,25 @@ class CacheRepository(
         return f"{prefix}:{body}"
 
     async def get_count(self, **query_filters: Any) -> int:
-        return await self._get_or_cache(
+        data: asyncio.Task[int] = self._get_or_cache(
             self.repository.get_count,
             "count",
+            asyncio.create_task,
             **query_filters,
-            wrapper=asyncio.create_task,
         )
 
+        return await data
+
     async def get_by_id(self, item_id: _Id, **kwargs: Any) -> _I:
-        return await self._get_or_cache(
+        data: asyncio.Task[_I] = self._get_or_cache(
             self.repository.get_by_id,
             "get_by_id",
+            asyncio.create_task,
             item_id,
             **kwargs,
-            wrapper=asyncio.create_task,
         )
+
+        return await data
 
     async def update(self, item_id: _Id, payload: _U, **kwargs: Any) -> _I:
         result = await self.repository.update(item_id, payload, **kwargs)
