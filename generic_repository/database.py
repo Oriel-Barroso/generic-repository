@@ -862,6 +862,7 @@ class SqlalchemyMappedRepository(
         self,
         session: AsyncSession,
         *,
+        repository: Optional[SqlalchemyModelRepository[_Model]] = None,
         id_mapper: Mapper[_Id, Any],
         create_mapper: Mapper[_A, Dict[str, Any]],
         update_mapper: Mapper[_U, Dict[str, Any]],
@@ -872,18 +873,23 @@ class SqlalchemyMappedRepository(
 
         Args:
             session (AsyncSession): The session to use
+            repository (SqlalchemyModelRepository[_Model], optional): The repository.
+                Defaults to None
             id_mapper (Mapper[_Id, Any]): The item ID mapper
             create_mapper (Mapper[_A, Dict[str, Any]]): The create mapper
             update_mapper (Mapper[_U, Dict[str, Any]]): The update mapper
             replace_mapper (Mapper[_R, Dict[str, Any]]): The replace mapper
             item_mapper (Mapper[_Model, _I]): The item mapper
         """
-        super().__init__(
-            repository=SqlalchemyModelRepository(
+        if repository is None:
+            repository = SqlalchemyModelRepository(
                 session=session,
-                filter_query=self.decorate_query,
-                model_class=type(self).model_class,
-            ),
+                filter_query=self.filter_query,
+                model_class=self.get_db_model(),
+            )
+
+        super().__init__(
+            repository=repository,
             id_mapper=id_mapper,
             create_mapper=create_mapper,
             update_mapper=update_mapper,
@@ -892,7 +898,19 @@ class SqlalchemyMappedRepository(
         )
         self.session = session
 
-    def decorate_query(  # pylint: disable=unused-argument
+    @classmethod
+    def get_db_model(cls):
+        """Retrieve the sqlalchemy model."""
+        if cls.model_class is None:
+            cls_name = f"{cls.__module__}.{cls.__qualname__}"
+            attribute_name = f"{cls_name}.model_class"
+            raise RuntimeError(
+                f"The model class is missing in the class `{cls_name}`. Set the "
+                f"`{attribute_name}` attribute to the model class."
+            )
+        return cls.model_class
+
+    def filter_query(  # pylint: disable=unused-argument
         self,
         query: Select,
         **query_filters: Any,

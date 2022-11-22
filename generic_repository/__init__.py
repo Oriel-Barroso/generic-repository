@@ -7,6 +7,7 @@ from .mapper import ConstructorMapper, LambdaMapper, Mapper, ToFunctionArgsMappe
 from .repository import Repository
 
 GenericBaseRepository = Repository
+
 __all__ = [
     # Base classes
     "Repository",
