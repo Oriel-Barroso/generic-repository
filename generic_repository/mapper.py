@@ -1,3 +1,4 @@
+# pylint: disable=import-error
 """
 Data mappers.
 
@@ -14,15 +15,13 @@ from typing import (
     NamedTuple,
     Optional,
     Sequence,
+    Tuple,
     Type,
     TypeVar,
     Union,
 )
 
-try:
-    from typing import ParamSpec  # type: ignore
-except ImportError:  # pragma nocover
-    from typing_extensions import ParamSpec
+from typing_extensions import ParamSpec
 
 _MapperParams = ParamSpec("_MapperParams")
 _In = TypeVar("_In")
@@ -30,6 +29,7 @@ _Out = TypeVar("_Out")
 _New = TypeVar("_New")
 _Left = TypeVar("_Left")
 _Right = TypeVar("_Right")
+_FuncParams = ParamSpec("_FuncParams")
 
 
 class Mapper(Generic[_In, _Out], abc.ABC):
@@ -84,9 +84,7 @@ class Mapper(Generic[_In, _Out], abc.ABC):
         """
         raise NotImplementedError("Not implemented.")
 
-    def chain(
-        self, mapper: "Union[Mapper[_Out, _New], Callable[[_Out], _New]]"
-    ) -> "Mapper[_In,_New]":
+    def chain(self, mapper: "Mapper[_Out, _New]") -> "Mapper[_In,_New]":
         """Chain another mapper to this.
 
         >>> mapper=(
@@ -105,11 +103,6 @@ class Mapper(Generic[_In, _Out], abc.ABC):
         >>> mapper2.reverse_map(24)
         3.0
 
-        A plain callable gets wrapped in a lambda mapper:
-        >>> mapper3 = mapper2.chain(lambda x: x*2)
-        >>> mapper3(3)
-        48
-
         Raises if any other type is provided.
         >>> mapper.chain('x')
         Traceback (most recent call last):
@@ -117,20 +110,31 @@ class Mapper(Generic[_In, _Out], abc.ABC):
         TypeError: ...
         >>>
         """
-        mapper_instance = None
-        if callable(mapper):
-            if isinstance(mapper, Mapper):
-                mapper_instance = mapper
-            else:
-                mapper_instance = LambdaMapper[_Out, _New](mapper)
 
-        else:
-            raise TypeError(
-                "Invalid value for the `mapper` parameter. Must be a mapper factory or"
-                "class."
-            )
+        return DecoratedMapper(self, mapper)
 
-        return DecoratedMapper(self, mapper_instance)
+    def chain_lambda(
+        self,
+        func: Callable[[_Out], _New],
+        reverse_func: Optional[Callable[[_New], _Out]] = None,
+    ) -> "Mapper[_In, _New]":
+        """Chain a lambda function and a reverse function.
+
+        Args:
+            func (Callable[[_Out], _New]): The function to chain
+            reverse_func (Optional[Callable[[_New], _Out]], optional): The reverse
+                function. Defaults to None.
+
+        Returns:
+            Mapper[_In, _New]: The resulting mapper
+
+        Example:
+        >>> mapper = LambdaMapper(lambda x: x*2, lambda x: x/2)
+        >>> mapper2 = mapper.chain_lambda(lambda x: x*3, lambda x: x/3)
+        >>> mapper2(3)
+        18
+        """
+        return self.chain(LambdaMapper(func, reverse_func))
 
     def __invert__(self) -> "Mapper[_Out, _In]":
         """Return the inverse mapper.
@@ -215,7 +219,10 @@ class LambdaMapper(Mapper[_In, _Out]):
 
     func: Callable[[_In], _Out]
     reverse_func: Optional[Callable[[_Out], _In]] = None
-    mapper_kwargs: Dict[str, Any] = field(default_factory=dict, kw_only=True)
+    mapper_kwargs: Dict[str, Any] = field(  # type: ignore
+        default_factory=dict,
+        kw_only=True,
+    )
 
     def map_item(self, item: _In) -> _Out:
         return self.func(item, **self.mapper_kwargs)
@@ -230,12 +237,12 @@ _Obj = TypeVar("_Obj")
 
 
 class _Arguments(NamedTuple):
-    args: tuple
+    args: Tuple[Any, ...]
     kwargs: Dict[str, Any]
 
 
 @dataclass(frozen=True)
-class ToFunctionArgsMapper(Mapper[Union[Dict[str, Any], Sequence], _Arguments]):
+class ToFunctionArgsMapper(Mapper[Union[Dict[str, Any], Sequence[Any]], _Arguments]):
     """Maps a dict to kwargs part of a function call.
 
     Example:
@@ -258,7 +265,7 @@ class ToFunctionArgsMapper(Mapper[Union[Dict[str, Any], Sequence], _Arguments]):
 
     default_kwargs: Dict[str, Any] = field(default_factory=dict)
 
-    def map_item(self, item):
+    def map_item(self, item: Union[Dict[str, Any], Sequence[Any]]) -> _Arguments:
         args: List[Any] = []
         kwargs: Dict[str, Any] = {}
         kwargs.update(self.default_kwargs)
@@ -271,7 +278,7 @@ class ToFunctionArgsMapper(Mapper[Union[Dict[str, Any], Sequence], _Arguments]):
 
         return _Arguments(tuple(args), kwargs)
 
-    def reverse_map(self, out: _Arguments) -> Union[tuple, Dict[str, Any]]:
+    def reverse_map(self, out: _Arguments) -> Union[Tuple[Any, ...], Dict[str, Any]]:
         """Perform the reverse map of the arguments.
 
         Args:
@@ -366,11 +373,6 @@ class DecoratedMapper(Mapper[_In, _Out]):
         self, first: Mapper[_In, _Intermediate], second: Mapper[_Intermediate, _Out]
     ) -> None:
         super().__init__()
-        if not isinstance(first, Mapper):
-            raise TypeError("The left mapper is not a valid mapper instance.")
-        if not isinstance(second, Mapper):
-            raise TypeError("The right-side mapper is not a valid mapper instance.")
-
         self.first, self.second = first, second
 
     def map_item(self, item: _In) -> _Out:
