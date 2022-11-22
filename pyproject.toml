@@ -17,7 +17,15 @@ pydantic = {version = "^1.9.0", optional = true}
 python = "^3.8"
 typing-extensions = {version = "^4.2.0", python = "<3.10"}
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.extras]
+http = ["httpx"]
+pydantic = ["pydantic"]
+sqlalchemy = ["SQLAlchemy"]
+
+[tool.poetry.group.dev.dependencies]
+pylint = "^2.15.5"
+ipykernel = "^6.17.0"
+mypy = "^0.991"
 SQLAlchemy = {version = "^1.4", extras = ["aiosqlite", "mypy"]}
 anyio = "^3.5.0"
 autoflake = "^1.4"
@@ -30,21 +38,11 @@ flake8 = "^4.0.1"
 httpx = "^0.23.0"
 importlib-metadata = {version = "<4.3.0", python = "<3.8"}
 isort = "^5.10.1"
-mypy = "^0.950"
+
 pydantic = "^1.9.0"
 pytest = "^7.1.2"
 pytest-cov = "^3.0.0"
 pytest-sugar = "^0.9.4"
-
-[tool.poetry.extras]
-http = ["httpx"]
-pydantic = ["pydantic"]
-sqlalchemy = ["SQLAlchemy"]
-
-[tool.poetry.group.dev.dependencies]
-pylint = "^2.15.5"
-ipykernel = "^6.17.0"
-mypy = "^0.991"
 
 [build-system]
 build-backend = "poetry.core.masonry.api"
