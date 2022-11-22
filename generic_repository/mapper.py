@@ -110,7 +110,6 @@ class Mapper(Generic[_In, _Out], abc.ABC):
         TypeError: ...
         >>>
         """
-
         return DecoratedMapper(self, mapper)
 
     def chain_lambda(
@@ -373,6 +372,12 @@ class DecoratedMapper(Mapper[_In, _Out]):
         self, first: Mapper[_In, _Intermediate], second: Mapper[_Intermediate, _Out]
     ) -> None:
         super().__init__()
+        if not isinstance(first, Mapper):  # type: ignore
+            raise TypeError("`first` parameter is not a mapper instance.")
+
+        if not isinstance(second, Mapper):  # type: ignore
+            raise TypeError("`second` is not a mapper instance.")
+
         self.first, self.second = first, second
 
     def map_item(self, item: _In) -> _Out:
