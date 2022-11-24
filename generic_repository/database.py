@@ -7,6 +7,7 @@ This module contains a sqlalchemy-powered database implementation.
 import abc
 from typing import (
     Any,
+    Callable,
     ClassVar,
     Dict,
     Generic,
@@ -476,31 +477,37 @@ class SqlalchemyModelRepository(
 
         return query
 
-    def filter_query(  # pylint: disable=unused-argument
+    def filter_query(
         self,
         query: Select,
-        *,
-        cursor: Any = None,
         **query_filters: Any,
     ) -> Select:
         """Apply filters to the query.
 
         Args:
             query (Select): The query to be filtered
-            cursor (Any, optional): A cursor to apply to the query. Defaults to None.
 
         Returns:
             Select: A new query with filters applied
         """
-        if cursor is not None:
-            query = self.apply_cursor(query, cursor)
-
         if self.query_filter is not None:
             query = self.query_filter(query, **query_filters)
 
+        for filter_name, filter_value in dict(query_filters).items():
+            try:
+                filter_func: Callable[[Select, Any], Select] = getattr(
+                    self, f"_filter_{filter_name}"
+                )
+            except AttributeError:
+                pass
+            else:
+                query = filter_func(query, filter_value)
+                # Remove the filter value from the filter mapping:
+                query_filters.pop(filter_name)
+
         return query
 
-    def apply_cursor(self, query: Select, cursor: Any) -> Select:
+    def apply_cursor(self, query: Select, cursor: Any) -> Select:  # pragma: nocover
         """Apply the cursor to a query.
 
         Args:
@@ -518,6 +525,7 @@ class SqlalchemyModelRepository(
     def get_list_query(
         self,
         *,
+        cursor: Any = None,
         offset: Optional[int] = None,
         size: Optional[int] = None,
         **query_filters: Any,
@@ -533,7 +541,7 @@ class SqlalchemyModelRepository(
             Select: The query to be executed.
         """
         query = self.filter_query(
-            self.get_items_query(),
+            query=self.get_items_query(),
             **query_filters,
         )
         if offset is not None:
@@ -541,6 +549,9 @@ class SqlalchemyModelRepository(
 
         if size is not None:
             query = query.limit(limit=size)
+
+        if cursor is not None:
+            query = self.apply_cursor(query, cursor)
 
         return query
 
@@ -730,7 +741,7 @@ class SqlalchemyModelRepository(
 
     def _add_primary_keys(self, item_id: Any, instance: _Model):
         id_values: Sequence[Any] = ()
-        if isinstance(item_id, (list, tuple, set)):
+        if isinstance(item_id, (list, tuple, set)):  # pragma: nocover
             id_values = tuple(id_values)
         else:
             id_values = (item_id,)
@@ -857,11 +868,12 @@ class SqlalchemyMappedRepository(
     """A SQLAlchemy mapped repository."""
 
     model_class: ClassVar[Optional[Any]] = None
+    repository: SqlalchemyModelRepository[_Model]
 
     def __init__(
         self,
-        session: AsyncSession,
         *,
+        session: Optional[AsyncSession] = None,
         repository: Optional[SqlalchemyModelRepository[_Model]] = None,
         id_mapper: Mapper[_Id, Any],
         create_mapper: Mapper[_A, Dict[str, Any]],
@@ -882,6 +894,10 @@ class SqlalchemyMappedRepository(
             item_mapper (Mapper[_Model, _I]): The item mapper
         """
         if repository is None:
+            if session is None:
+                raise TypeError(
+                    "If no repository is provided, a session must be provided."
+                )
             repository = SqlalchemyModelRepository(
                 session=session,
                 filter_query=self.filter_query,
@@ -896,7 +912,7 @@ class SqlalchemyMappedRepository(
             replace_mapper=replace_mapper,
             item_mapper=item_mapper,
         )
-        self.session = session
+        self.session = self.repository.session
 
     @classmethod
     def get_db_model(cls):

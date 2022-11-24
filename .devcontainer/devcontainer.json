@@ -5,6 +5,8 @@
 		"vscode": {
 			"settings": {
 				"python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+				// Pylint:
+				"python.linting.pylintPath": "pylint",
 				// Pytest
 				"python.testing.pytestEnabled": true,
 				"python.testing.pytestPath": "${workspaceFolder}/.venv/bin/pytest",
