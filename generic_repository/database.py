@@ -880,6 +880,7 @@ class SqlalchemyMappedRepository(
         update_mapper: Mapper[_U, Dict[str, Any]],
         replace_mapper: Mapper[_R, Dict[str, Any]],
         item_mapper: Mapper[_Model, _I],
+        **query_filters: Any,
     ) -> None:
         """Initialize a new SqlalchemyMappedRepository.
 
@@ -911,6 +912,7 @@ class SqlalchemyMappedRepository(
             update_mapper=update_mapper,
             replace_mapper=replace_mapper,
             item_mapper=item_mapper,
+            **query_filters,
         )
         self.session = self.repository.session
 
