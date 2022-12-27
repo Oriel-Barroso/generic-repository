@@ -7,6 +7,7 @@ from typing import Any, Generic, List, Optional, TypeVar
 
 from .mapper import Mapper
 from .repository import Repository
+from .utils import merge_dicts
 
 _MI = TypeVar("_MI")
 _MA = TypeVar("_MA")
@@ -98,8 +99,7 @@ class MappedRepository(
             await self.repository.update(
                 self.id_mapper(item_id),
                 self.update_mapper(payload),
-                **kwargs,
-                **self._filters,
+                **merge_dicts(kwargs, self._filters),
             )
         )
 
@@ -114,7 +114,7 @@ class MappedRepository(
         """
         return await self.map_item(
             await self.repository.get_by_id(
-                self.id_mapper(item_id), **kwargs, **self._filters
+                self.id_mapper(item_id), **merge_dicts(kwargs, self._filters)
             )
         )
 
@@ -132,8 +132,7 @@ class MappedRepository(
             await self.repository.replace(
                 self.id_mapper(item_id),
                 self.replace_mapper(payload),
-                **kwargs,
-                **self._filters,
+                **merge_dicts(kwargs, self._filters),
             )
         )
 
@@ -143,7 +142,9 @@ class MappedRepository(
         Returns:
             int: The item count
         """
-        return await self.repository.get_count(**query_filters, **self._filters)
+        return await self.repository.get_count(
+            **merge_dicts(query_filters, self._filters)
+        )
 
     async def get_list(
         self,
@@ -165,8 +166,7 @@ class MappedRepository(
             await self.repository.get_list(
                 offset=offset,
                 size=size,
-                **query_filters,
-                **self._filters,
+                **merge_dicts(query_filters, self._filters),
             )
         )
 
@@ -176,7 +176,10 @@ class MappedRepository(
         Args:
             item_id (_MId): The item ID to be removed.
         """
-        await self.repository.remove(self.id_mapper(item_id), **kwargs, **self._filters)
+        await self.repository.remove(
+            self.id_mapper(item_id),
+            **merge_dicts(kwargs, self._filters),
+        )
 
     async def map_item(self, item: _I) -> _MI:
         """Transform an item.
