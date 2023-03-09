@@ -16,6 +16,7 @@ from typing import (
     Optional,
     Protocol,
     Sequence,
+    Tuple,
     Type,
     TypeVar,
     cast,
@@ -424,6 +425,7 @@ class SqlalchemyModelRepository(
         AssertionError: ...
         """
         model_class = self.model_class
+
         if model_class is None:
             cls_qualname = f"{type(self).__module__}.{type(self).__qualname__}"
             method_name = self.get_db_model.__name__
@@ -460,7 +462,7 @@ class SqlalchemyModelRepository(
 
     def _match_id(self, query: Select, item_id: Any) -> Select:
         primary_key = self.primary_key_columns
-        values: tuple[Any, ...] = ()
+        values: Tuple[Any, ...] = ()
         if len(primary_key) == 0:
             raise AssertionError("Invalid primary key: No columns specified.")
         if isinstance(item_id, (list, tuple, set, frozenset)):
