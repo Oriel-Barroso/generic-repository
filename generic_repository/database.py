@@ -956,6 +956,6 @@ class SqlalchemyMappedRepository(
 
     async def map_item_list(self, item_list: List[_Model]) -> List[_I]:
         return await self.session.run_sync(
-            lambda s, l: [self.item_mapper(i) for i in l],
+            lambda session, items: [self.item_mapper(item) for item in items],
             item_list,
         )
