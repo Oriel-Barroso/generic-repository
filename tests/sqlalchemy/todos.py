@@ -9,13 +9,11 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from generic_repository import (
-    ConstructorMapper,
     DatabaseRepository,
     LambdaMapper,
     PydanticDictMapper,
     PydanticObjectMapper,
     SqlalchemyMappedRepository,
-    ToFunctionArgsMapper,
 )
 
 from ..todos import AddTodoPayload, Todo, TodoRepository, UpdateTodoPayload
@@ -42,9 +40,9 @@ class DbTodoRepository(
         super().__init__(
             session=session,
             item_mapper=PydanticObjectMapper(Todo),
-            create_mapper=PydanticDictMapper(AddTodoPayload)
-            .chain(ToFunctionArgsMapper())
-            .chain(ConstructorMapper(TodoItem)),
+            create_mapper=PydanticDictMapper(AddTodoPayload).chain_lambda(
+                lambda data: TodoItem(**data)
+            ),
             update_mapper=PydanticDictMapper(UpdateTodoPayload, exclude_unset=True),
             replace_mapper=PydanticDictMapper(AddTodoPayload),
         )
