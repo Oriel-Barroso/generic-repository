@@ -2,8 +2,7 @@ import typing
 
 
 class MergeError(Exception):
-    def __init__(self, location: typing.List[typing.Any], message: str) -> None:
-        super().__init__(f"Error at {'->'.join(map(str, location))}: {message}")
+    pass
 
 
 def merge_dicts(*dicts: typing.Dict[str, typing.Any]) -> typing.Dict[str, typing.Any]:

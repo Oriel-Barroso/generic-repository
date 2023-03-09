@@ -16,12 +16,14 @@ from typing import (
     Optional,
     Protocol,
     Sequence,
+    Tuple,
     Type,
     TypeVar,
     cast,
 )
 
-from sqlalchemy import Column, func, inspect, select  # type: ignore
+from sqlalchemy import Column, func, inspect, select
+from sqlalchemy.exc import NoInspectionAvailable
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.decl_api import DeclarativeMeta
@@ -424,6 +426,7 @@ class SqlalchemyModelRepository(
         AssertionError: ...
         """
         model_class = self.model_class
+
         if model_class is None:
             cls_qualname = f"{type(self).__module__}.{type(self).__qualname__}"
             method_name = self.get_db_model.__name__
@@ -432,7 +435,12 @@ class SqlalchemyModelRepository(
                 f"the attribute or override the method `{cls_qualname}.{method_name}` "
                 "method to fix this."
             )
-        if not isinstance(model_class, DeclarativeMeta):
+        try:
+            inspection = inspect(model_class)
+            is_valid = inspection.is_mapper
+        except NoInspectionAvailable:
+            is_valid = False
+        if not is_valid:
             model_qualname = f"{model_class.__module__}.{model_class.__qualname__}"
             raise AssertionError(f"Class `{model_qualname}` is not a SQLAlchemy model.")
 
@@ -460,7 +468,7 @@ class SqlalchemyModelRepository(
 
     def _match_id(self, query: Select, item_id: Any) -> Select:
         primary_key = self.primary_key_columns
-        values: tuple[Any, ...] = ()
+        values: Tuple[Any, ...] = ()
         if len(primary_key) == 0:
             raise AssertionError("Invalid primary key: No columns specified.")
         if isinstance(item_id, (list, tuple, set, frozenset)):

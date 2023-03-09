@@ -5,7 +5,6 @@ Data mappers.
 These constructs are used to apply data transformations in various places.
 """
 import abc
-from dataclasses import dataclass, field
 from typing import (
     Any,
     Callable,
@@ -184,7 +183,6 @@ class Mapper(Generic[_In, _Out], abc.ABC):
         return LambdaMapper[_In, _In](lambda x: x, lambda x: x)
 
 
-@dataclass(frozen=True)
 class LambdaMapper(Mapper[_In, _Out]):
     """A lambda-powered mapper.
 
@@ -208,7 +206,7 @@ class LambdaMapper(Mapper[_In, _Out]):
     >>> mapper3 = LambdaMapper(
     ...     lambda x, *, n: x*n,
     ...     lambda x, *, n: x/n,
-    ...     mapper_kwargs={'n':5},
+    ...     n=5,
     ... )
     >>> mapper3(4)
     20
@@ -216,12 +214,16 @@ class LambdaMapper(Mapper[_In, _Out]):
     4.0
     """
 
-    func: Callable[[_In], _Out]
-    reverse_func: Optional[Callable[[_Out], _In]] = None
-    mapper_kwargs: Dict[str, Any] = field(  # type: ignore
-        default_factory=dict,
-        kw_only=True,
-    )
+    def __init__(
+        self,
+        func: Callable[[_In], _Out],
+        reverse_func: Optional[Callable[[_Out], _In]] = None,
+        **kwargs: Any
+    ) -> None:
+        super().__init__()
+        self.func = func
+        self.reverse_func = reverse_func
+        self.mapper_kwargs = kwargs
 
     def map_item(self, item: _In) -> _Out:
         return self.func(item, **self.mapper_kwargs)
@@ -240,7 +242,6 @@ class _Arguments(NamedTuple):
     kwargs: Dict[str, Any]
 
 
-@dataclass(frozen=True)
 class ToFunctionArgsMapper(Mapper[Union[Dict[str, Any], Sequence[Any]], _Arguments]):
     """Maps a dict to kwargs part of a function call.
 
@@ -262,7 +263,9 @@ class ToFunctionArgsMapper(Mapper[Union[Dict[str, Any], Sequence[Any]], _Argumen
     >>>
     """
 
-    default_kwargs: Dict[str, Any] = field(default_factory=dict)
+    def __init__(self, **default_kwargs: Any) -> None:
+        super().__init__()
+        self.default_kwargs = default_kwargs
 
     def map_item(self, item: Union[Dict[str, Any], Sequence[Any]]) -> _Arguments:
         args: List[Any] = []
