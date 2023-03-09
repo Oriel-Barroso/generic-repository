@@ -434,7 +434,8 @@ class SqlalchemyModelRepository(
                 f"the attribute or override the method `{cls_qualname}.{method_name}` "
                 "method to fix this."
             )
-        if not isinstance(model_class, DeclarativeMeta):
+        inspection = inspect(model_class)
+        if not inspection.is_mapper:
             model_qualname = f"{model_class.__module__}.{model_class.__qualname__}"
             raise AssertionError(f"Class `{model_qualname}` is not a SQLAlchemy model.")
 
