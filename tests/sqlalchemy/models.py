@@ -1,20 +1,18 @@
 from typing import Type
 
 import sqlalchemy as sa
-from sqlalchemy.orm.decl_api import as_declarative, declared_attr
+from sqlalchemy.orm.decl_api import declared_attr
+from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase
 
 
-@as_declarative()
-class Base:
-    metadata: sa.MetaData
-
+class Base(DeclarativeBase):
     @declared_attr
-    def id(cls: Type) -> "sa.Column[sa.Integer]":
-        return sa.Column(f"{cls.__name__.lower()}_id", sa.Integer, primary_key=True)
-
+    def id(cls: Type) -> "Mapped[sa.Integer]":
+        value: Mapped[sa.Integer] = mapped_column(f"{cls.__name__.lower()}_id", sa.Integer, primary_key=True)
+        return value
 
 class TodoItem(Base):
     __tablename__ = "todos"
 
-    title = sa.Column(sa.String(100), nullable=False, index=True)
-    text = sa.Column(sa.Text, index=True)
+    title: Mapped[sa.String] = mapped_column(sa.String(100), nullable=False, index=True)
+    text: Mapped[sa.Text | None] = mapped_column(sa.Text, index=True)

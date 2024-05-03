@@ -9,8 +9,8 @@ import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
 from sqlalchemy import delete
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine, async_sessionmaker
+
 
 from generic_repository import CacheRepository, HttpRepository, MappedRepository
 from generic_repository.mapper import LambdaMapper
@@ -44,7 +44,7 @@ async def db_engine(init_database, anyio_backend):
 
 @pytest.fixture(scope="session")
 def db_sessionmaker(db_engine: AsyncEngine):
-    return sessionmaker(
+    return async_sessionmaker(
         bind=db_engine,
         class_=AsyncSession,  # type: ignore
     )
@@ -52,7 +52,7 @@ def db_sessionmaker(db_engine: AsyncEngine):
 
 @pytest.fixture(scope="session")
 async def db_session(
-    db_sessionmaker: "sessionmaker[AsyncSession]", anyio_backend  # type: ignore
+    db_sessionmaker: "async_sessionmaker[AsyncSession]", anyio_backend  # type: ignore
 ):
     session = db_sessionmaker()
     try:

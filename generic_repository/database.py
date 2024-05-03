@@ -22,13 +22,13 @@ from typing import (
     cast,
 )
 
-from sqlalchemy import Column, func, inspect, select
+from sqlalchemy import func, inspect, select
 from sqlalchemy.exc import NoInspectionAvailable
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session
-from sqlalchemy.orm.decl_api import DeclarativeMeta
+from sqlalchemy.orm import Session, Mapped
+from sqlalchemy.orm.decl_api import DeclarativeBase
 from sqlalchemy.sql.selectable import Select
-
+from sqlalchemy import inspect
 from .composition import MappedRepository
 from .exceptions import ItemNotFoundException
 from .mapper import Mapper
@@ -58,7 +58,7 @@ class DatabaseRepository(
     """
 
     model_class: ClassVar[Optional[Type[Any]]] = None
-    primary_key_column: ClassVar[Optional[Column[Any]]] = None
+    primary_key_column: ClassVar[Optional[Mapped[Any]]] = None
 
     def __init__(
         self,
@@ -95,14 +95,16 @@ class DatabaseRepository(
         Returns:
             ModelType: The model class to use.
         """
+        #Chequear si es una subclase de DeclarativeBase
         message: Optional[str] = None
+        # val = inspect(cls)
         if cls.model_class is None:
             message = (
                 "The database model was not set for `{class_name}`. Please set the "
                 "`{class_name}.model_class` attribute or override "
                 "`{class_name}.{get_model_method}` method."
             )
-        if not isinstance(cls.model_class, DeclarativeMeta):
+        if issubclass(cls, DeclarativeBase):
             message = "The class '{class_name}' is not a SQLALchemy model."
         if message is not None:
             raise AssertionError(
@@ -122,7 +124,7 @@ class DatabaseRepository(
         return select(self.get_db_model())
 
     @classmethod
-    def get_id_field(cls) -> Column[Any]:  # pragma nocover
+    def get_id_field(cls) -> Mapped[Any]:  # pragma nocover
         """Retrieve the primary key column.
 
         Multi-column primary keys are not supported.
