@@ -6,6 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase
 
 
 class Base(DeclarativeBase):
+    metadata: sa.MetaData
     @declared_attr
     def id(cls: Type) -> "Mapped[sa.Integer]":
         value: Mapped[sa.Integer] = mapped_column(f"{cls.__name__.lower()}_id", sa.Integer, primary_key=True)
